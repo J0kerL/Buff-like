@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="mobile" property="mobile"/>
+        <result column="steam_id" property="steamId"/>
+        <result column="avatar" property="avatar"/>
+        <result column="balance" property="balance"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE username = #{username}
+    </select>
+
+    <select id="selectByMobile" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE mobile = #{mobile}
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_user (username, password, mobile, steam_id, avatar, balance, version)
+        VALUES (#{username}, #{password}, #{mobile}, #{steamId}, #{avatar}, #{balance}, #{version})
+    </insert>
+
+    <update id="updateById" parameterType="com.buff.model.entity.User">
+        UPDATE sys_user
+        <set>
+            <if test="username != null and username != ''">
+                username = #{username},
+            </if>
+            <if test="password != null and password != ''">
+                password = #{password},
+            </if>
+            <if test="mobile != null and mobile != ''">
+                mobile = #{mobile},
+            </if>
+            <if test="steamId != null and steamId != ''">
+                steam_id = #{steamId},
+            </if>
+            <if test="avatar != null and avatar != ''">
+                avatar = #{avatar},
+            </if>
+            <if test="balance != null and balance != ''">
+                balance = #{balance},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateBalance">
+        UPDATE sys_user
+        SET balance = #{balance}, version = version + 1
+        WHERE id = #{id} AND version = #{version}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM sys_user WHERE id = #{id}
+    </delete>
+
+</mapper>

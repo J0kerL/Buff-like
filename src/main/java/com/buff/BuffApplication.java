@@ -1,0 +1,20 @@
+package com.buff;
+
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+/**
+ * Buff饰品交易平台主应用类
+ *
+ * @author Administrator
+ */
+@SpringBootApplication
+@MapperScan("com.buff.mapper")
+public class BuffApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(BuffApplication.class, args);
+    }
+
+}

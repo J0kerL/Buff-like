@@ -1,0 +1,65 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库连接URL（通过环境变量 DB_URL 注入）
+    url: ${DB_URL:jdbc:mysql://localhost:3306/buff?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false}
+    # 数据库用户名（通过环境变量 DB_USERNAME 注入）
+    username: ${DB_USERNAME:root}
+    # 数据库密码（通过环境变量 DB_PASSWORD 注入）
+    password: ${DB_PASSWORD:1234}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:1234}
+      database: ${REDIS_DATABASE:0}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          # 连接池最大连接数（生产环境增大）
+          max-active: 20
+          # 连接池最大阻塞等待时间
+          max-wait: -1ms
+          # 连接池最大空闲连接数
+          max-idle: 10
+          # 连接池最小空闲连接数（保持一定连接预热）
+          min-idle: 5
+
+# JWT 配置
+jwt:
+  # JWT 签名密钥（生产环境必须通过环境变量 JWT_SECRET 设置）
+  secret: ${JWT_SECRET:buff-secret-key-for-jwt-token-generation-2026}
+  # Access Token 过期时间：15分钟（单位：毫秒）
+  expiration: ${JWT_EXPIRATION:900000}
+  # Refresh Token 过期时间：30天（单位：毫秒）
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
+
+# ============================================
+# 阿里云 OSS 配置
+# ============================================
+# 说明：生产环境的 OSS 配置必须通过环境变量注入
+# 部署前需要设置以下环境变量：
+# - OSS_ENDPOINT: OSS 服务端点
+# - OSS_ACCESS_KEY_ID: OSS 访问密钥 ID
+# - OSS_ACCESS_KEY_SECRET: OSS 访问密钥 Secret
+# - OSS_BUCKET_NAME: OSS 存储桶名称
+oss:
+  endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+  access-key-id: ${OSS_ACCESS_KEY_ID:}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  bucket-name: ${OSS_BUCKET_NAME:}
+
+# 日志配置
+logging:
+  file:
+    # 日志文件存储路径（生产环境通常在 /data 目录）
+    path: ${LOG_PATH:/data/logs/buff}
+  level:
+    # 根日志级别
+    root: info
+    # 应用包日志级别（生产环境使用 info）
+    com.buff: info
+    # Mapper 日志级别（生产环境不打印 SQL，减少日志量）
+    com.buff.mapper: warn
+
