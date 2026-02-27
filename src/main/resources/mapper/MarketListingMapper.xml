@@ -177,6 +177,12 @@
         WHERE id = #{id} AND version = #{version}
     </update>
 
+    <update id="updateStatusById">
+        UPDATE market_listing
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM market_listing WHERE id = #{id}
     </delete>

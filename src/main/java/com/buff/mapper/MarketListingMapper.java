@@ -70,11 +70,17 @@ public interface MarketListingMapper {
     int insert(MarketListing listing);
 
     /**
-     * 更新挂单状态
+     * 更新挂单状态（带乐观锁版本校验）
      */
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
                      @Param("version") Integer version);
+
+    /**
+     * 强制更新挂单状态（不校验版本，用于流程内部状态推进，如 PURCHASED → SOLD）
+     */
+    int updateStatusById(@Param("id") Long id,
+                         @Param("status") Integer status);
 
     /**
      * 删除挂单

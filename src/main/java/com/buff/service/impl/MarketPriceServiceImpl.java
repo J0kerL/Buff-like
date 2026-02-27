@@ -139,32 +139,37 @@ public class MarketPriceServiceImpl implements MarketPriceService {
     }
 
     /**
-     * 从BUFF平台爬取单个饰品价格
+     * 从 Steam Community Market 查询单个饰品价格。
+     * 需要物品模板中配置了英文 market_hash_name，否则降级为模拟价格。
      */
     private BigDecimal fetchPriceFromBuff(ItemTemplate template) {
-        log.debug("开始爬取饰品价格: {}", template.getName());
+        log.debug("开始查询饰品参考价格: {}", template.getName());
 
-        // 检查是否启用真实爬虫
+        // 检查是否启用真实价格查询
         if (!crawlerConfig.getEnabled()) {
-            log.debug("爬虫未启用，使用模拟价格: {}", template.getName());
+            log.debug("价格查询未启用，使用模拟价格: {}", template.getName());
+            return generateMockPrice(template);
+        }
+
+        // 必须有英文 market_hash_name 才能调用 Steam Market API
+        if (template.getMarketHashName() == null || template.getMarketHashName().isBlank()) {
+            log.warn("模板缺少 market_hash_name，使用模拟价格: id={}, name={}",
+                    template.getId(), template.getName());
             return generateMockPrice(template);
         }
 
         try {
-            // 使用BuffCrawlerUtil爬取真实价格
-            BigDecimal price = BuffCrawlerUtil.fetchPriceByName(template.getName());
+            BigDecimal price = BuffCrawlerUtil.fetchPriceByName(template.getMarketHashName());
 
-            // 如果爬取失败，使用模拟价格作为兜底
             if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-                log.warn("爬取价格失败或价格无效，使用模拟价格: {}", template.getName());
+                log.warn("Steam 价格查询无效，使用模拟价格: {}", template.getName());
                 price = generateMockPrice(template);
             }
 
             return price;
 
         } catch (Exception e) {
-            log.error("爬取BUFF价格异常: {}", template.getName(), e);
-            // 异常时返回模拟价格
+            log.error("Steam 价格查询异常: {}", template.getName(), e);
             return generateMockPrice(template);
         }
     }

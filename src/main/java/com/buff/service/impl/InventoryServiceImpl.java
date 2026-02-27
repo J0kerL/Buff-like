@@ -9,7 +9,6 @@ import com.buff.model.dto.InventoryQueryDTO;
 import com.buff.model.vo.InventoryStatisticsVO;
 import com.buff.model.vo.InventoryVO;
 import com.buff.service.InventoryService;
-import com.buff.service.MarketPriceService;
 import com.buff.util.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,6 @@ import java.util.Map;
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryMapper inventoryMapper;
-    private final MarketPriceService marketPriceService;
 
     @Override
     public PageResult<InventoryVO> getMyInventory(InventoryQueryDTO queryDTO) {
@@ -204,37 +202,13 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     /**
-     * 计算用户库存总价值
+     * 计算用户库存总价值。
+     * 通过 SQL 层 JOIN + SUM 聚合，避免将全量库存加载到 Java 内存。
      */
     private BigDecimal calculateTotalValue(Long userId) {
         try {
-            // 查询用户所有库存
-            List<InventoryVO> inventoryList = inventoryMapper.selectInventoryList(
-                    userId, null, null, null, null, 0, Integer.MAX_VALUE
-            );
-
-            if (inventoryList.isEmpty()) {
-                return BigDecimal.ZERO;
-            }
-
-            // 提取所有模板ID
-            List<Long> templateIds = inventoryList.stream()
-                    .map(InventoryVO::getTemplateId)
-                    .distinct()
-                    .toList();
-
-            // 批量查询价格
-            Map<Long, BigDecimal> priceMap = marketPriceService.getPricesByTemplateIds(templateIds);
-
-            // 累加计算总价值
-            BigDecimal totalValue = BigDecimal.ZERO;
-            for (InventoryVO inventory : inventoryList) {
-                BigDecimal price = priceMap.getOrDefault(inventory.getTemplateId(), BigDecimal.ZERO);
-                totalValue = totalValue.add(price);
-            }
-
-            return totalValue;
-
+            BigDecimal totalValue = inventoryMapper.selectTotalValueByUserId(userId);
+            return totalValue != null ? totalValue : BigDecimal.ZERO;
         } catch (Exception e) {
             log.error("计算库存总价值失败: userId={}", userId, e);
             return BigDecimal.ZERO;

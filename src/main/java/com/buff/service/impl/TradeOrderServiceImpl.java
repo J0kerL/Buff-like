@@ -2,7 +2,6 @@ package com.buff.service.impl;
 
 import com.buff.common.PageResult;
 import com.buff.common.ResultCode;
-import com.buff.constant.InventoryStatus;
 import com.buff.constant.ListingStatus;
 import com.buff.constant.OrderStatus;
 import com.buff.constant.WalletLogType;
@@ -15,17 +14,18 @@ import com.buff.model.dto.OrderCreateDTO;
 import com.buff.model.entity.MarketListing;
 import com.buff.model.entity.TradeOrder;
 import com.buff.model.entity.User;
-import com.buff.model.entity.UserInventory;
 import com.buff.model.vo.OrderVO;
+import com.buff.mq.config.RabbitMQConfig;
+import com.buff.mq.message.OrderConfirmedMessage;
 import com.buff.service.TradeOrderService;
 import com.buff.service.WalletService;
 import com.buff.util.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -46,6 +46,7 @@ public class TradeOrderServiceImpl implements TradeOrderService {
     private final InventoryMapper inventoryMapper;
     private final UserMapper userMapper;
     private final WalletService walletService;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -134,7 +135,7 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         }
 
         // 5. 扣除买家余额（使用乐观锁）
-        BigDecimal newBalance = buyer.getBalance().subtract(order.getTotalAmount());
+        java.math.BigDecimal newBalance = buyer.getBalance().subtract(order.getTotalAmount());
         int updateCount = userMapper.updateBalance(buyerId, newBalance, buyer.getVersion());
         if (updateCount == 0) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "支付失败，请重试");
@@ -206,35 +207,28 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             throw new BusinessException(ResultCode.ERROR.getCode(), "订单状态异常，无法确认收货");
         }
 
-        // 4. 查询卖家信息
-        User seller = userMapper.selectById(order.getSellerId());
-
-        // 5. 增加卖家余额（使用乐观锁）
-        BigDecimal newBalance = seller.getBalance().add(order.getTotalAmount());
-        int updateCount = userMapper.updateBalance(order.getSellerId(), newBalance, seller.getVersion());
-        if (updateCount == 0) {
-            throw new BusinessException(ResultCode.ERROR.getCode(), "确认收货失败，请重试");
-        }
-
-        // 6. 记录资金流水
-        walletService.recordWalletLog(order.getSellerId(), WalletLogType.SALE_INCOME,
-                order.getTotalAmount(), newBalance, order.getOrderNo(), "出售商品收入");
-
-        // 7. 转移库存所有权
-        UserInventory inventory = inventoryMapper.selectById(order.getInventoryId());
-        inventory.setUserId(buyerId);
-        inventory.setStatus(InventoryStatus.IN_STOCK);
-        inventoryMapper.updateById(inventory);
-
-        // 8. 更新挂单状态为已售出
-        marketListingMapper.updateStatus(order.getListingId(), ListingStatus.SOLD, null);
-
-        // 9. 更新订单状态为交易成功
+        // 4. 核心事务：更新订单状态为交易成功
         tradeOrderMapper.updateStatus(id, OrderStatus.SUCCESS);
         tradeOrderMapper.updateFinishTime(id);
 
-        log.info("订单确认收货成功: orderId={}, buyerId={}, sellerId={}, amount={}",
-                id, buyerId, order.getSellerId(), order.getTotalAmount());
+        // 5. 发送 MQ 消息，异步完成：卖家打款 + 库存转移 + 挂单已售
+        OrderConfirmedMessage message = new OrderConfirmedMessage(
+                id,
+                order.getOrderNo(),
+                buyerId,
+                order.getSellerId(),
+                order.getTotalAmount(),
+                order.getInventoryId(),
+                order.getListingId()
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.ORDER_EXCHANGE,
+                RabbitMQConfig.ORDER_CONFIRMED_ROUTING_KEY,
+                message
+        );
+
+        log.info("订单确认收货成功，后处理消息已发送: orderId={}, buyerId={}, sellerId={}",
+                id, buyerId, order.getSellerId());
     }
 
     @Override
@@ -264,9 +258,13 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         // 4. 更新订单状态为已取消
         tradeOrderMapper.updateStatus(id, OrderStatus.CANCELLED);
 
-        // 5. 恢复挂单状态为上架中
+        // 5. 恢复挂单状态为上架中（先查当前version再更新）
         MarketListing listing = marketListingMapper.selectById(order.getListingId());
-        marketListingMapper.updateStatus(order.getListingId(), ListingStatus.ON_SALE, listing.getVersion());
+        int updateCount = marketListingMapper.updateStatus(
+                order.getListingId(), ListingStatus.ON_SALE, listing.getVersion());
+        if (updateCount == 0) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "恢复挂单状态失败，请重试");
+        }
 
         log.info("订单取消成功: orderId={}, userId={}", id, userId);
     }
@@ -302,7 +300,6 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             throw new BusinessException(ResultCode.UNAUTHORIZED);
         }
 
-        // 参数校验
         if (pageNum == null || pageNum < 1) {
             pageNum = 1;
         }
@@ -310,19 +307,14 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             pageSize = 20;
         }
 
-        // 计算偏移量
         int offset = (pageNum - 1) * pageSize;
-
-        // 查询总数
         Long total = tradeOrderMapper.countMyBuyOrders(buyerId, status);
 
         if (total == 0) {
             return PageResult.empty(pageNum, pageSize);
         }
 
-        // 查询列表
         List<OrderVO> list = tradeOrderMapper.selectMyBuyOrders(buyerId, status, offset, pageSize);
-
         return new PageResult<>(total, list, pageNum, pageSize);
     }
 
@@ -333,7 +325,6 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             throw new BusinessException(ResultCode.UNAUTHORIZED);
         }
 
-        // 参数校验
         if (pageNum == null || pageNum < 1) {
             pageNum = 1;
         }
@@ -341,25 +332,19 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             pageSize = 20;
         }
 
-        // 计算偏移量
         int offset = (pageNum - 1) * pageSize;
-
-        // 查询总数
         Long total = tradeOrderMapper.countMySellOrders(sellerId, status);
 
         if (total == 0) {
             return PageResult.empty(pageNum, pageSize);
         }
 
-        // 查询列表
         List<OrderVO> list = tradeOrderMapper.selectMySellOrders(sellerId, status, offset, pageSize);
-
         return new PageResult<>(total, list, pageNum, pageSize);
     }
 
     /**
-     * 生成订单号
-     * 格式：yyyyMMddHHmmss + 6位随机数
+     * 生成订单号：yyyyMMddHHmmss + 6位随机数
      */
     private String generateOrderNo() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));

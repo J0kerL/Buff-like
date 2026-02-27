@@ -82,7 +82,12 @@ public interface InventoryMapper {
     int updateById(UserInventory inventory);
 
     /**
-     * 删除库存
+     * 删除库存（软删除）
      */
     int deleteById(@Param("id") Long id);
+
+    /**
+     * 查询用户库存总价值（JOIN market_price 在 DB 层聚合，避免全量加载到内存）
+     */
+    java.math.BigDecimal selectTotalValueByUserId(@Param("userId") Long userId);
 }

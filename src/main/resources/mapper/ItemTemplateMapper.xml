@@ -8,37 +8,41 @@
         <result column="icon_url" property="iconUrl"/>
         <result column="rarity" property="rarity"/>
         <result column="type" property="type"/>
+        <result column="market_hash_name" property="marketHashName"/>
+        <result column="is_deleted" property="isDeleted"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template WHERE id = #{id}
+        SELECT * FROM base_item_template WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <select id="selectAll" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template ORDER BY id ASC
+        SELECT * FROM base_item_template WHERE is_deleted = 0 ORDER BY id ASC
     </select>
 
     <select id="selectByName" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template WHERE name = #{name}
+        SELECT * FROM base_item_template WHERE name = #{name} AND is_deleted = 0
     </select>
 
     <insert id="insert" parameterType="com.buff.model.entity.ItemTemplate" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO base_item_template (name, icon_url, rarity, type, create_time)
-        VALUES (#{name}, #{iconUrl}, #{rarity}, #{type}, #{createTime})
+        INSERT INTO base_item_template (name, icon_url, rarity, type, market_hash_name, is_deleted, create_time)
+        VALUES (#{name}, #{iconUrl}, #{rarity}, #{type}, #{marketHashName}, 0, #{createTime})
     </insert>
 
     <update id="update" parameterType="com.buff.model.entity.ItemTemplate">
         UPDATE base_item_template
-        SET name = #{name},
-            icon_url = #{iconUrl},
-            rarity = #{rarity},
-            type = #{type}
-        WHERE id = #{id}
+        SET name             = #{name},
+            icon_url         = #{iconUrl},
+            rarity           = #{rarity},
+            type             = #{type},
+            market_hash_name = #{marketHashName}
+        WHERE id = #{id} AND is_deleted = 0
     </update>
 
-    <delete id="deleteById">
-        DELETE FROM base_item_template WHERE id = #{id}
-    </delete>
+    <!-- 软删除：标记 is_deleted=1 而非物理删除，避免历史库存和订单关联数据丢失 -->
+    <update id="deleteById">
+        UPDATE base_item_template SET is_deleted = 1 WHERE id = #{id}
+    </update>
 
 </mapper>

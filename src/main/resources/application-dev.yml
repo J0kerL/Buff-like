@@ -23,6 +23,27 @@ spring:
           # 连接池最小空闲连接数
           min-idle: 0
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    # 消息确认模式：publisher-confirm + publisher-returns 保证消息可靠投递
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        # 消费者手动 ACK，处理失败可重试
+        acknowledge-mode: manual
+        # 每次预取1条消息，避免消息堆积在消费者内存
+        prefetch: 1
+        retry:
+          enabled: true
+          initial-interval: 2000ms
+          max-attempts: 3
+          multiplier: 2
+
 jwt:
   # JWT 签名密钥
   secret: buff-secret-key-for-jwt-token-generation-2026

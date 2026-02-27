@@ -41,6 +41,17 @@ public class ItemTemplate implements Serializable {
     private String type;
 
     /**
+     * Steam 市场哈希名（英文），用于调用 Steam Market API 查询价格
+     * 例: "AK-47 | Asiimov (Field-Tested)"
+     */
+    private String marketHashName;
+
+    /**
+     * 是否已删除：0=正常，1=已删除（软删除）
+     */
+    private Integer isDeleted;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

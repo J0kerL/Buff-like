@@ -10,6 +10,7 @@
         <result column="pattern_index" property="patternIndex"/>
         <result column="status" property="status"/>
         <result column="get_time" property="getTime"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="InventoryVOMap" type="com.buff.model.vo.InventoryVO">
@@ -24,7 +25,7 @@
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM user_inventory WHERE id = #{id}
+        SELECT * FROM user_inventory WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <select id="selectInventoryDetailById" resultMap="InventoryVOMap">
@@ -38,8 +39,8 @@
             ui.status,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
-        WHERE ui.id = #{id}
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        WHERE ui.id = #{id} AND ui.is_deleted = 0
     </select>
 
     <select id="selectInventoryList" resultMap="InventoryVOMap">
@@ -53,8 +54,8 @@
             ui.status,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
-        WHERE ui.user_id = #{userId}
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         <if test="status != null">
             AND ui.status = #{status}
         </if>
@@ -74,8 +75,8 @@
     <select id="countInventory" resultType="long">
         SELECT COUNT(*)
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
-        WHERE ui.user_id = #{userId}
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         <if test="status != null">
             AND ui.status = #{status}
         </if>
@@ -95,7 +96,7 @@
             status,
             COUNT(*) AS count
         FROM user_inventory
-        WHERE user_id = #{userId}
+        WHERE user_id = #{userId} AND is_deleted = 0
         GROUP BY status
     </select>
 
@@ -104,8 +105,8 @@
             it.rarity,
             COUNT(*) AS count
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
-        WHERE ui.user_id = #{userId}
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         GROUP BY it.rarity
     </select>
 
@@ -114,8 +115,8 @@
             it.type,
             COUNT(*) AS count
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
-        WHERE ui.user_id = #{userId}
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         GROUP BY it.type
     </select>
 
@@ -130,22 +131,34 @@
             ui.status,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
+        AND ui.is_deleted = 0
+    </select>
+
+    <!--
+        在数据库层用 JOIN + SUM 直接计算总价值，避免全量加载库存到 Java 内存。
+        LEFT JOIN market_price 保证无参考价格的物品按 0 计算。
+    -->
+    <select id="selectTotalValueByUserId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(mp.price), 0)
+        FROM user_inventory ui
+        LEFT JOIN market_price mp ON ui.template_id = mp.template_id
+        WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
     </select>
 
     <insert id="insert" parameterType="com.buff.model.entity.UserInventory" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user_inventory (user_id, template_id, wear_value, pattern_index, status, get_time)
-        VALUES (#{userId}, #{templateId}, #{wearValue}, #{patternIndex}, #{status}, #{getTime})
+        INSERT INTO user_inventory (user_id, template_id, wear_value, pattern_index, status, get_time, is_deleted)
+        VALUES (#{userId}, #{templateId}, #{wearValue}, #{patternIndex}, #{status}, #{getTime}, 0)
     </insert>
 
     <update id="updateStatus">
         UPDATE user_inventory
         SET status = #{status}
-        WHERE id = #{id}
+        WHERE id = #{id} AND is_deleted = 0
     </update>
 
     <update id="updateById" parameterType="com.buff.model.entity.UserInventory">
@@ -155,11 +168,12 @@
             wear_value = #{wearValue},
             pattern_index = #{patternIndex},
             status = #{status}
-        WHERE id = #{id}
+        WHERE id = #{id} AND is_deleted = 0
     </update>
 
-    <delete id="deleteById">
-        DELETE FROM user_inventory WHERE id = #{id}
-    </delete>
+    <!-- 软删除：标记 is_deleted=1 而非物理删除 -->
+    <update id="deleteById">
+        UPDATE user_inventory SET is_deleted = 1 WHERE id = #{id}
+    </update>
 
 </mapper>

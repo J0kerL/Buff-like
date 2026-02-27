@@ -50,4 +50,9 @@ public class UserInventory implements Serializable {
      * 获得时间
      */
     private LocalDateTime getTime;
+
+    /**
+     * 是否已删除：0=正常，1=已删除（软删除）
+     */
+    private Integer isDeleted;
 }
