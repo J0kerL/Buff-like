@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.MarketListingMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.MarketListing">
+        <id column="id" property="id"/>
+        <result column="seller_id" property="sellerId"/>
+        <result column="inventory_id" property="inventoryId"/>
+        <result column="template_id" property="templateId"/>
+        <result column="price" property="price"/>
+        <result column="status" property="status"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <resultMap id="ListingVOMap" type="com.buff.model.vo.MarketListingVO">
+        <id column="id" property="id"/>
+        <result column="seller_id" property="sellerId"/>
+        <result column="seller_name" property="sellerName"/>
+        <result column="inventory_id" property="inventoryId"/>
+        <result column="template_id" property="templateId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="icon_url" property="iconUrl"/>
+        <result column="wear_value" property="wearValue"/>
+        <result column="price" property="price"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM market_listing WHERE id = #{id}
+    </select>
+
+    <select id="selectListingDetailById" resultMap="ListingVOMap">
+        SELECT
+            ml.id,
+            ml.seller_id,
+            u.username AS seller_name,
+            ml.inventory_id,
+            ml.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ml.price,
+            ml.status,
+            ml.create_time
+        FROM market_listing ml
+        LEFT JOIN sys_user u ON ml.seller_id = u.id
+        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        WHERE ml.id = #{id}
+    </select>
+
+    <select id="selectMarketListings" resultMap="ListingVOMap">
+        SELECT
+            ml.id,
+            ml.seller_id,
+            u.username AS seller_name,
+            ml.inventory_id,
+            ml.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ml.price,
+            ml.status,
+            ml.create_time
+        FROM market_listing ml
+        LEFT JOIN sys_user u ON ml.seller_id = u.id
+        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        WHERE ml.status = 0
+        <if test="keyword != null and keyword != ''">
+            AND it.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="templateId != null">
+            AND ml.template_id = #{templateId}
+        </if>
+        <if test="minPrice != null">
+            AND ml.price &gt;= #{minPrice}
+        </if>
+        <if test="maxPrice != null">
+            AND ml.price &lt;= #{maxPrice}
+        </if>
+        <if test="minWear != null">
+            AND ui.wear_value &gt;= #{minWear}
+        </if>
+        <if test="maxWear != null">
+            AND ui.wear_value &lt;= #{maxWear}
+        </if>
+        <choose>
+            <when test="sortField == 'createTime'">
+                ORDER BY ml.create_time
+            </when>
+            <otherwise>
+                ORDER BY ml.price
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortOrder == 'desc'">
+                DESC
+            </when>
+            <otherwise>
+                ASC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countMarketListings" resultType="long">
+        SELECT COUNT(*)
+        FROM market_listing ml
+        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        WHERE ml.status = 0
+        <if test="keyword != null and keyword != ''">
+            AND it.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="templateId != null">
+            AND ml.template_id = #{templateId}
+        </if>
+        <if test="minPrice != null">
+            AND ml.price &gt;= #{minPrice}
+        </if>
+        <if test="maxPrice != null">
+            AND ml.price &lt;= #{maxPrice}
+        </if>
+        <if test="minWear != null">
+            AND ui.wear_value &gt;= #{minWear}
+        </if>
+        <if test="maxWear != null">
+            AND ui.wear_value &lt;= #{maxWear}
+        </if>
+    </select>
+
+    <select id="selectMyListings" resultMap="ListingVOMap">
+        SELECT
+            ml.id,
+            ml.seller_id,
+            u.username AS seller_name,
+            ml.inventory_id,
+            ml.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ml.price,
+            ml.status,
+            ml.create_time
+        FROM market_listing ml
+        LEFT JOIN sys_user u ON ml.seller_id = u.id
+        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        WHERE ml.seller_id = #{sellerId}
+        <if test="status != null">
+            AND ml.status = #{status}
+        </if>
+        ORDER BY ml.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countMyListings" resultType="long">
+        SELECT COUNT(*)
+        FROM market_listing
+        WHERE seller_id = #{sellerId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.MarketListing" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO market_listing (seller_id, inventory_id, template_id, price, status, version, create_time)
+        VALUES (#{sellerId}, #{inventoryId}, #{templateId}, #{price}, #{status}, #{version}, #{createTime})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE market_listing
+        SET status = #{status}, version = version + 1
+        WHERE id = #{id} AND version = #{version}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM market_listing WHERE id = #{id}
+    </delete>
+
+    <select id="selectByInventoryId" resultMap="BaseResultMap">
+        SELECT * FROM market_listing
+        WHERE inventory_id = #{inventoryId}
+        AND status = 0
+        LIMIT 1
+    </select>
+
+</mapper>
