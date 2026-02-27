@@ -77,6 +77,11 @@ public interface InventoryMapper {
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 
     /**
+     * 更新库存信息
+     */
+    int updateById(UserInventory inventory);
+
+    /**
      * 删除库存
      */
     int deleteById(@Param("id") Long id);

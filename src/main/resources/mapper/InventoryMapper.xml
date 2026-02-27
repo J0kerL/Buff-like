@@ -148,6 +148,16 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updateById" parameterType="com.buff.model.entity.UserInventory">
+        UPDATE user_inventory
+        SET user_id = #{userId},
+            template_id = #{templateId},
+            wear_value = #{wearValue},
+            pattern_index = #{patternIndex},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM user_inventory WHERE id = #{id}
     </delete>

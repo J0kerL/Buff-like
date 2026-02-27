@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.TradeOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.TradeOrder">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="buyer_id" property="buyerId"/>
+        <result column="seller_id" property="sellerId"/>
+        <result column="listing_id" property="listingId"/>
+        <result column="inventory_id" property="inventoryId"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="pay_time" property="payTime"/>
+        <result column="deliver_time" property="deliverTime"/>
+        <result column="finish_time" property="finishTime"/>
+    </resultMap>
+
+    <resultMap id="OrderVOMap" type="com.buff.model.vo.OrderVO">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="buyer_id" property="buyerId"/>
+        <result column="seller_id" property="sellerId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="icon_url" property="iconUrl"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="pay_time" property="payTime"/>
+        <result column="deliver_time" property="deliverTime"/>
+        <result column="finish_time" property="finishTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM trade_order WHERE id = #{id}
+    </select>
+
+    <select id="selectByOrderNo" resultMap="BaseResultMap">
+        SELECT * FROM trade_order WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="selectOrderDetailById" resultMap="OrderVOMap">
+        SELECT
+            o.id,
+            o.order_no,
+            o.buyer_id,
+            o.seller_id,
+            it.name AS item_name,
+            it.icon_url,
+            o.total_amount,
+            o.status,
+            o.create_time,
+            o.pay_time,
+            o.deliver_time,
+            o.finish_time
+        FROM trade_order o
+        LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectMyBuyOrders" resultMap="OrderVOMap">
+        SELECT
+            o.id,
+            o.order_no,
+            o.buyer_id,
+            o.seller_id,
+            it.name AS item_name,
+            it.icon_url,
+            o.total_amount,
+            o.status,
+            o.create_time,
+            o.pay_time,
+            o.deliver_time,
+            o.finish_time
+        FROM trade_order o
+        LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE o.buyer_id = #{buyerId}
+        <if test="status != null">
+            AND o.status = #{status}
+        </if>
+        ORDER BY o.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countMyBuyOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM trade_order
+        WHERE buyer_id = #{buyerId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <select id="selectMySellOrders" resultMap="OrderVOMap">
+        SELECT
+            o.id,
+            o.order_no,
+            o.buyer_id,
+            o.seller_id,
+            it.name AS item_name,
+            it.icon_url,
+            o.total_amount,
+            o.status,
+            o.create_time,
+            o.pay_time,
+            o.deliver_time,
+            o.finish_time
+        FROM trade_order o
+        LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE o.seller_id = #{sellerId}
+        <if test="status != null">
+            AND o.status = #{status}
+        </if>
+        ORDER BY o.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countMySellOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM trade_order
+        WHERE seller_id = #{sellerId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.TradeOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trade_order (order_no, buyer_id, seller_id, listing_id, inventory_id, total_amount, status, create_time)
+        VALUES (#{orderNo}, #{buyerId}, #{sellerId}, #{listingId}, #{inventoryId}, #{totalAmount}, #{status}, #{createTime})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE trade_order
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePayTime">
+        UPDATE trade_order
+        SET pay_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateDeliverTime">
+        UPDATE trade_order
+        SET deliver_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateFinishTime">
+        UPDATE trade_order
+        SET finish_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>
