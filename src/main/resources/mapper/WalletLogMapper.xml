@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.WalletLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.WalletLog">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="type" property="type"/>
+        <result column="amount" property="amount"/>
+        <result column="balance_after" property="balanceAfter"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <resultMap id="WalletLogVOMap" type="com.buff.model.vo.WalletLogVO">
+        <id column="id" property="id"/>
+        <result column="type" property="type"/>
+        <result column="type_name" property="typeName"/>
+        <result column="amount" property="amount"/>
+        <result column="balance_after" property="balanceAfter"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM wallet_log WHERE id = #{id}
+    </select>
+
+    <select id="selectUserLogs" resultMap="WalletLogVOMap">
+        SELECT
+            id,
+            type,
+            CASE type
+                WHEN 1 THEN '充值'
+                WHEN 2 THEN '提现'
+                WHEN 3 THEN '购买支出'
+                WHEN 4 THEN '出售收入'
+                ELSE '未知'
+            END AS type_name,
+            amount,
+            balance_after,
+            order_no,
+            remark,
+            create_time
+        FROM wallet_log
+        WHERE user_id = #{userId}
+        <if test="type != null">
+            AND type = #{type}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countUserLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM wallet_log
+        WHERE user_id = #{userId}
+        <if test="type != null">
+            AND type = #{type}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.WalletLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wallet_log (user_id, type, amount, balance_after, order_no, remark, create_time)
+        VALUES (#{userId}, #{type}, #{amount}, #{balanceAfter}, #{orderNo}, #{remark}, #{createTime})
+    </insert>
+
+</mapper>

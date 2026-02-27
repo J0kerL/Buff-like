@@ -5,6 +5,7 @@ import com.buff.common.ResultCode;
 import com.buff.constant.InventoryStatus;
 import com.buff.constant.ListingStatus;
 import com.buff.constant.OrderStatus;
+import com.buff.constant.WalletLogType;
 import com.buff.exception.BusinessException;
 import com.buff.mapper.InventoryMapper;
 import com.buff.mapper.MarketListingMapper;
@@ -17,12 +18,14 @@ import com.buff.model.entity.User;
 import com.buff.model.entity.UserInventory;
 import com.buff.model.vo.OrderVO;
 import com.buff.service.TradeOrderService;
+import com.buff.service.WalletService;
 import com.buff.util.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -42,6 +45,7 @@ public class TradeOrderServiceImpl implements TradeOrderService {
     private final MarketListingMapper marketListingMapper;
     private final InventoryMapper inventoryMapper;
     private final UserMapper userMapper;
+    private final WalletService walletService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -130,16 +134,17 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         }
 
         // 5. 扣除买家余额（使用乐观锁）
-        int updateCount = userMapper.updateBalance(
-                buyerId,
-                buyer.getBalance().subtract(order.getTotalAmount()),
-                buyer.getVersion()
-        );
+        BigDecimal newBalance = buyer.getBalance().subtract(order.getTotalAmount());
+        int updateCount = userMapper.updateBalance(buyerId, newBalance, buyer.getVersion());
         if (updateCount == 0) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "支付失败，请重试");
         }
 
-        // 6. 更新订单状态为待发货
+        // 6. 记录资金流水
+        walletService.recordWalletLog(buyerId, WalletLogType.PURCHASE,
+                order.getTotalAmount().negate(), newBalance, order.getOrderNo(), "购买商品");
+
+        // 7. 更新订单状态为待发货
         tradeOrderMapper.updateStatus(id, OrderStatus.PAID_WAIT_DELIVERY);
         tradeOrderMapper.updatePayTime(id);
 
@@ -205,25 +210,26 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         User seller = userMapper.selectById(order.getSellerId());
 
         // 5. 增加卖家余额（使用乐观锁）
-        int updateCount = userMapper.updateBalance(
-                order.getSellerId(),
-                seller.getBalance().add(order.getTotalAmount()),
-                seller.getVersion()
-        );
+        BigDecimal newBalance = seller.getBalance().add(order.getTotalAmount());
+        int updateCount = userMapper.updateBalance(order.getSellerId(), newBalance, seller.getVersion());
         if (updateCount == 0) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "确认收货失败，请重试");
         }
 
-        // 6. 转移库存所有权
+        // 6. 记录资金流水
+        walletService.recordWalletLog(order.getSellerId(), WalletLogType.SALE_INCOME,
+                order.getTotalAmount(), newBalance, order.getOrderNo(), "出售商品收入");
+
+        // 7. 转移库存所有权
         UserInventory inventory = inventoryMapper.selectById(order.getInventoryId());
         inventory.setUserId(buyerId);
         inventory.setStatus(InventoryStatus.IN_STOCK);
         inventoryMapper.updateById(inventory);
 
-        // 7. 更新挂单状态为已售出
+        // 8. 更新挂单状态为已售出
         marketListingMapper.updateStatus(order.getListingId(), ListingStatus.SOLD, null);
 
-        // 8. 更新订单状态为交易成功
+        // 9. 更新订单状态为交易成功
         tradeOrderMapper.updateStatus(id, OrderStatus.SUCCESS);
         tradeOrderMapper.updateFinishTime(id);
 
