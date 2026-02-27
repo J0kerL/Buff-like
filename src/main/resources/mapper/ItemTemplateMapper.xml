@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.ItemTemplateMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.ItemTemplate">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="icon_url" property="iconUrl"/>
+        <result column="rarity" property="rarity"/>
+        <result column="type" property="type"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM base_item_template WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM base_item_template ORDER BY id ASC
+    </select>
+
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT * FROM base_item_template WHERE name = #{name}
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.ItemTemplate" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO base_item_template (name, icon_url, rarity, type, create_time)
+        VALUES (#{name}, #{iconUrl}, #{rarity}, #{type}, #{createTime})
+    </insert>
+
+    <update id="update" parameterType="com.buff.model.entity.ItemTemplate">
+        UPDATE base_item_template
+        SET name = #{name},
+            icon_url = #{iconUrl},
+            rarity = #{rarity},
+            type = #{type}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM base_item_template WHERE id = #{id}
+    </delete>
+
+</mapper>

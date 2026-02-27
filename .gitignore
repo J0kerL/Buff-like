@@ -41,4 +41,7 @@ logs/
 sql/
 
 ### doc ###
-doc/
+docs/
+
+### claude ###
+.claude/

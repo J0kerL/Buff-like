@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.InventoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.UserInventory">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="template_id" property="templateId"/>
+        <result column="wear_value" property="wearValue"/>
+        <result column="pattern_index" property="patternIndex"/>
+        <result column="status" property="status"/>
+        <result column="get_time" property="getTime"/>
+    </resultMap>
+
+    <resultMap id="InventoryVOMap" type="com.buff.model.vo.InventoryVO">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="item_name" property="itemName"/>
+        <result column="icon_url" property="iconUrl"/>
+        <result column="wear_value" property="wearValue"/>
+        <result column="pattern_index" property="patternIndex"/>
+        <result column="status" property="status"/>
+        <result column="get_time" property="getTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM user_inventory WHERE id = #{id}
+    </select>
+
+    <select id="selectInventoryDetailById" resultMap="InventoryVOMap">
+        SELECT
+            ui.id,
+            ui.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ui.pattern_index,
+            ui.status,
+            ui.get_time
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.id = #{id}
+    </select>
+
+    <select id="selectInventoryList" resultMap="InventoryVOMap">
+        SELECT
+            ui.id,
+            ui.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ui.pattern_index,
+            ui.status,
+            ui.get_time
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.user_id = #{userId}
+        <if test="status != null">
+            AND ui.status = #{status}
+        </if>
+        <if test="type != null and type != ''">
+            AND it.type = #{type}
+        </if>
+        <if test="rarity != null and rarity != ''">
+            AND it.rarity = #{rarity}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND it.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY ui.get_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countInventory" resultType="long">
+        SELECT COUNT(*)
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.user_id = #{userId}
+        <if test="status != null">
+            AND ui.status = #{status}
+        </if>
+        <if test="type != null and type != ''">
+            AND it.type = #{type}
+        </if>
+        <if test="rarity != null and rarity != ''">
+            AND it.rarity = #{rarity}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND it.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <select id="countByStatus" resultType="map">
+        SELECT
+            status,
+            COUNT(*) AS count
+        FROM user_inventory
+        WHERE user_id = #{userId}
+        GROUP BY status
+    </select>
+
+    <select id="countByRarity" resultType="map">
+        SELECT
+            it.rarity,
+            COUNT(*) AS count
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.user_id = #{userId}
+        GROUP BY it.rarity
+    </select>
+
+    <select id="countByType" resultType="map">
+        SELECT
+            it.type,
+            COUNT(*) AS count
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.user_id = #{userId}
+        GROUP BY it.type
+    </select>
+
+    <select id="selectByIds" resultMap="InventoryVOMap">
+        SELECT
+            ui.id,
+            ui.template_id,
+            it.name AS item_name,
+            it.icon_url,
+            ui.wear_value,
+            ui.pattern_index,
+            ui.status,
+            ui.get_time
+        FROM user_inventory ui
+        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        WHERE ui.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <insert id="insert" parameterType="com.buff.model.entity.UserInventory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_inventory (user_id, template_id, wear_value, pattern_index, status, get_time)
+        VALUES (#{userId}, #{templateId}, #{wearValue}, #{patternIndex}, #{status}, #{getTime})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE user_inventory
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user_inventory WHERE id = #{id}
+    </delete>
+
+</mapper>

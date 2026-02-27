@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.MarketPriceMapper">
+
+    <resultMap id="BaseResultMap" type="com.buff.model.entity.MarketPrice">
+        <id column="id" property="id"/>
+        <result column="template_id" property="templateId"/>
+        <result column="price" property="price"/>
+        <result column="source" property="source"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByTemplateId" resultMap="BaseResultMap">
+        SELECT * FROM item_market_price
+        WHERE template_id = #{templateId}
+    </select>
+
+    <select id="selectByTemplateIds" resultMap="BaseResultMap">
+        SELECT * FROM item_market_price
+        WHERE template_id IN
+        <foreach collection="templateIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM item_market_price
+        ORDER BY update_time DESC
+    </select>
+
+    <insert id="insertOrUpdate" parameterType="com.buff.model.entity.MarketPrice">
+        INSERT INTO item_market_price (template_id, price, source, update_time)
+        VALUES (#{templateId}, #{price}, #{source}, NOW())
+        ON DUPLICATE KEY UPDATE
+            price = VALUES(price),
+            source = VALUES(source),
+            update_time = NOW()
+    </insert>
+
+    <insert id="batchInsertOrUpdate">
+        INSERT INTO item_market_price (template_id, price, source, update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.templateId}, #{item.price}, #{item.source}, NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            price = VALUES(price),
+            source = VALUES(source),
+            update_time = NOW()
+    </insert>
+
+    <update id="updatePriceByTemplateId">
+        UPDATE item_market_price
+        SET price = #{price}, update_time = NOW()
+        WHERE template_id = #{templateId}
+    </update>
+
+    <delete id="deleteByTemplateId">
+        DELETE FROM item_market_price
+        WHERE template_id = #{templateId}
+    </delete>
+
+</mapper>
