@@ -72,17 +72,4 @@ logging:
     # Mapper 日志级别（打印 SQL 语句）
     com.buff.mapper: debug
 
-# BUFF爬虫配置
-buff:
-  crawler:
-    # 是否启用真实爬虫（false则使用模拟数据）
-    enabled: true
-    # 请求超时时间（毫秒）
-    timeout: 15000
-    # 请求间隔最小延迟（毫秒）
-    min-delay: 2000
-    # 请求间隔最大延迟（毫秒）
-    max-delay: 5000
-    # 最大重试次数
-    max-retry: 3
 

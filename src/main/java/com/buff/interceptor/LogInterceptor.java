@@ -6,13 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 import java.util.UUID;
 
 /**
- * 日志拦截器
- * 用于记录请求日志
+ * 日志拦截器：记录每次请求的方法、URI、状态码和耗时，并注入 traceId 到 MDC。
  *
  * @author Administrator
  */
@@ -26,23 +24,9 @@ public class LogInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 记录请求开始时间
         request.setAttribute(START_TIME, System.currentTimeMillis());
-
-        String traceId = UUID.randomUUID().toString().replace("-", "");
-        MDC.put("traceId", traceId);
-        
-        // 记录请求信息
-        String method = request.getMethod();
-        String uri = request.getRequestURI();
-        
-        log.info("请求开始: method={}, uri={}", method, uri);
-        
+        MDC.put("traceId", UUID.randomUUID().toString().replace("-", ""));
+        log.info("请求开始: method={}, uri={}", request.getMethod(), request.getRequestURI());
         return true;
-    }
-
-    @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, 
-                          Object handler, ModelAndView modelAndView) {
-        // 可以在这里记录Controller处理完成的信息
     }
 
     @Override

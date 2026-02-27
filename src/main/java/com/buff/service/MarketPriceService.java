@@ -34,7 +34,7 @@ public interface MarketPriceService {
     void batchUpdatePrices(List<MarketPrice> prices);
 
     /**
-     * 从BUFF平台爬取并更新所有价格
+     * 从 Steam Community Market 同步所有饰品参考价格并写入数据库
      */
     void fetchAndUpdateAllPrices();
 }
