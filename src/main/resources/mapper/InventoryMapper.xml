@@ -141,12 +141,12 @@
 
     <!--
         在数据库层用 JOIN + SUM 直接计算总价值，避免全量加载库存到 Java 内存。
-        LEFT JOIN market_price 保证无参考价格的物品按 0 计算。
+        LEFT JOIN item_market_price 保证无参考价格的物品按 0 计算。
     -->
     <select id="selectTotalValueByUserId" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(mp.price), 0)
         FROM user_inventory ui
-        LEFT JOIN market_price mp ON ui.template_id = mp.template_id
+        LEFT JOIN item_market_price mp ON ui.template_id = mp.template_id
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
     </select>
 
