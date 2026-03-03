@@ -36,4 +36,14 @@ public interface MarketListingService {
      * 查看我的挂单
      */
     PageResult<MarketListingVO> getMyListings(Integer status, Integer pageNum, Integer pageSize);
+
+    /**
+     * 获取热门饰品列表
+     */
+    PageResult<MarketListingVO> getHotItems(Integer pageNum, Integer pageSize);
+
+    /**
+     * 刷新热门饰品缓存
+     */
+    void refreshHotItems();
 }

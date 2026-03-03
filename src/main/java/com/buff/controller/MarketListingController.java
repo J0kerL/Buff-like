@@ -72,4 +72,22 @@ public class MarketListingController {
         PageResult<MarketListingVO> result = marketListingService.getMyListings(status, pageNum, pageSize);
         return Result.success(result);
     }
+
+    @Operation(summary = "获取热门饰品", description = "获取热门饰品列表，数据来自Redis缓存")
+    @GetMapping("/hot-items")
+    public Result<PageResult<MarketListingVO>> getHotItems(
+            @Parameter(description = "页码", example = "1")
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页大小", example = "10")
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        PageResult<MarketListingVO> result = marketListingService.getHotItems(pageNum, pageSize);
+        return Result.success(result);
+    }
+
+    @Operation(summary = "刷新热门饰品缓存", description = "手动刷新热门饰品缓存")
+    @PostMapping("/refresh-hot-items")
+    public Result<Void> refreshHotItems() {
+        marketListingService.refreshHotItems();
+        return Result.success();
+    }
 }

@@ -4,6 +4,7 @@ import com.buff.common.PageResult;
 import com.buff.common.ResultCode;
 import com.buff.constant.InventoryStatus;
 import com.buff.constant.ListingStatus;
+import com.buff.constant.RedisKey;
 import com.buff.exception.BusinessException;
 import com.buff.mapper.InventoryMapper;
 import com.buff.mapper.MarketListingMapper;
@@ -13,6 +14,7 @@ import com.buff.model.entity.MarketListing;
 import com.buff.model.entity.UserInventory;
 import com.buff.model.vo.MarketListingVO;
 import com.buff.service.MarketListingService;
+import com.buff.util.RedisUtils;
 import com.buff.util.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class MarketListingServiceImpl implements MarketListingService {
 
     private final MarketListingMapper marketListingMapper;
     private final InventoryMapper inventoryMapper;
+    private final RedisUtils redisUtils;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -82,6 +85,7 @@ public class MarketListingServiceImpl implements MarketListingService {
         listing.setCreateTime(LocalDateTime.now());
 
         marketListingMapper.insert(listing);
+        redisUtils.delete(RedisKey.HOT_ITEMS_KEY);
 
         log.info("用户上架商品成功: userId={}, inventoryId={}, price={}", userId, dto.getInventoryId(), dto.getPrice());
 
@@ -120,6 +124,7 @@ public class MarketListingServiceImpl implements MarketListingService {
 
         // 5. 恢复库存状态为在库
         inventoryMapper.updateStatus(listing.getInventoryId(), InventoryStatus.IN_STOCK);
+        redisUtils.delete(RedisKey.HOT_ITEMS_KEY);
 
         log.info("用户下架商品成功: userId={}, listingId={}", userId, id);
     }
@@ -211,5 +216,62 @@ public class MarketListingServiceImpl implements MarketListingService {
         List<MarketListingVO> list = marketListingMapper.selectMyListings(userId, status, offset, pageSize);
 
         return new PageResult<>(total, list, pageNum, pageSize);
+    }
+
+    @Override
+    public PageResult<MarketListingVO> getHotItems(Integer pageNum, Integer pageSize) {
+        // 参数校验
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1) {
+            pageSize = 10;
+        }
+
+        // 尝试从Redis获取热门饰品列表
+        @SuppressWarnings("unchecked")
+        List<MarketListingVO> cachedList = (List<MarketListingVO>) redisUtils.get(RedisKey.HOT_ITEMS_KEY);
+        
+        if (cachedList == null || cachedList.isEmpty()) {
+            // 缓存不存在，刷新缓存
+            refreshHotItems();
+            cachedList = (List<MarketListingVO>) redisUtils.get(RedisKey.HOT_ITEMS_KEY);
+        }
+
+        if (cachedList == null || cachedList.isEmpty()) {
+            return PageResult.empty(pageNum, pageSize);
+        }
+
+        // 计算分页
+        int total = cachedList.size();
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, total);
+
+        if (fromIndex >= total) {
+            return PageResult.empty(pageNum, pageSize);
+        }
+
+        List<MarketListingVO> pageList = cachedList.subList(fromIndex, toIndex);
+        return new PageResult<>((long) total, pageList, pageNum, pageSize);
+    }
+
+    @Override
+    public void refreshHotItems() {
+        log.info("开始刷新热门饰品缓存");
+        
+        // 查询最新上架的30个商品作为热门饰品
+        List<MarketListingVO> hotItems = marketListingMapper.selectMarketListings(
+                null, null, null, null, null, null,
+                "createTime", "desc", 0, 30
+        );
+
+        if (hotItems != null && !hotItems.isEmpty()) {
+            // 存入Redis，设置1小时过期
+            redisUtils.set(RedisKey.HOT_ITEMS_KEY, hotItems, 3600);
+            log.info("热门饰品缓存刷新成功，共{}个商品", hotItems.size());
+        } else {
+            redisUtils.delete(RedisKey.HOT_ITEMS_KEY);
+            log.warn("未查询到热门饰品数据");
+        }
     }
 }

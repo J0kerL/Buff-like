@@ -43,6 +43,11 @@ public interface RedisKey {
     String REFRESH_TOKEN_PREFIX = "auth:refresh:";
 
     /**
+     * 热门饰品列表Key
+     */
+    String HOT_ITEMS_KEY = "market:hot:items";
+
+    /**
      * 获取验证码Key
      */
     static String getSmsCodeKey(String mobile) {
