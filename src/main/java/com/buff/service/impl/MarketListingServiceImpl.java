@@ -259,10 +259,10 @@ public class MarketListingServiceImpl implements MarketListingService {
     public void refreshHotItems() {
         log.info("开始刷新热门饰品缓存");
         
-        // 查询最新上架的30个商品作为热门饰品
+        // 查询最新上架的10个商品作为热门饰品
         List<MarketListingVO> hotItems = marketListingMapper.selectMarketListings(
                 null, null, null, null, null, null,
-                "createTime", "desc", 0, 30
+                "createTime", "desc", 0, 10
         );
 
         if (hotItems != null && !hotItems.isEmpty()) {
