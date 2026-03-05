@@ -20,6 +20,7 @@
         <result column="inventory_id" property="inventoryId"/>
         <result column="template_id" property="templateId"/>
         <result column="item_name" property="itemName"/>
+        <result column="item_type" property="itemType"/>
         <result column="icon_url" property="iconUrl"/>
         <result column="wear_value" property="wearValue"/>
         <result column="price" property="price"/>
@@ -39,6 +40,7 @@
             ml.inventory_id,
             ml.template_id,
             it.name AS item_name,
+            it.type AS item_type,
             it.icon_url,
             ui.wear_value,
             ml.price,
@@ -59,6 +61,7 @@
             ml.inventory_id,
             ml.template_id,
             it.name AS item_name,
+            it.type AS item_type,
             it.icon_url,
             ui.wear_value,
             ml.price,
@@ -140,6 +143,7 @@
             ml.inventory_id,
             ml.template_id,
             it.name AS item_name,
+            it.type AS item_type,
             it.icon_url,
             ui.wear_value,
             ml.price,

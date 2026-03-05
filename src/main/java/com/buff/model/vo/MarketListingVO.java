@@ -45,6 +45,9 @@ public class MarketListingVO implements Serializable {
     @Schema(description = "价格")
     private BigDecimal price;
 
+    @Schema(description = "饰品分类")
+    private String itemType;
+
     @Schema(description = "状态")
     private Integer status;
 
