@@ -62,11 +62,26 @@
         <if test="status != null">
             AND ui.status = #{status}
         </if>
-        <if test="type != null and type != ''">
-            AND it.type = #{type}
+        <if test="typeConditions != null and !typeConditions.isEmpty()">
+            AND (
+            <foreach collection="typeConditions" item="cond" separator=" OR ">
+                <choose>
+                    <when test="cond.keyword != null and cond.keyword != ''">
+                        (it.type = #{cond.type} AND it.name LIKE CONCAT('%', #{cond.keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        it.type = #{cond.type}
+                    </otherwise>
+                </choose>
+            </foreach>
+            )
         </if>
-        <if test="rarity != null and rarity != ''">
-            AND it.rarity = #{rarity}
+        <if test="wearRanges != null and !wearRanges.isEmpty()">
+            AND (
+            <foreach collection="wearRanges" item="range" separator=" OR ">
+                (ui.wear_value &gt;= #{range.min} AND ui.wear_value &lt; #{range.max})
+            </foreach>
+            )
         </if>
         <if test="keyword != null and keyword != ''">
             AND it.name LIKE CONCAT('%', #{keyword}, '%')
@@ -83,11 +98,26 @@
         <if test="status != null">
             AND ui.status = #{status}
         </if>
-        <if test="type != null and type != ''">
-            AND it.type = #{type}
+        <if test="typeConditions != null and !typeConditions.isEmpty()">
+            AND (
+            <foreach collection="typeConditions" item="cond" separator=" OR ">
+                <choose>
+                    <when test="cond.keyword != null and cond.keyword != ''">
+                        (it.type = #{cond.type} AND it.name LIKE CONCAT('%', #{cond.keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        it.type = #{cond.type}
+                    </otherwise>
+                </choose>
+            </foreach>
+            )
         </if>
-        <if test="rarity != null and rarity != ''">
-            AND it.rarity = #{rarity}
+        <if test="wearRanges != null and !wearRanges.isEmpty()">
+            AND (
+            <foreach collection="wearRanges" item="range" separator=" OR ">
+                (ui.wear_value &gt;= #{range.min} AND ui.wear_value &lt; #{range.max})
+            </foreach>
+            )
         </if>
         <if test="keyword != null and keyword != ''">
             AND it.name LIKE CONCAT('%', #{keyword}, '%')

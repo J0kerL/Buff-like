@@ -28,8 +28,11 @@ public class InventoryQueryDTO implements Serializable {
     @Schema(description = "饰品类型")
     private String type;
 
-    @Schema(description = "稀有度")
-    private String rarity;
+    @Schema(description = "多类型/武器筛选（逗号分隔的选择值，如 'TYPE:步枪,SUB:AK-47:步枪,TYPE:匕首'）")
+    private String typeSelects;
+
+    @Schema(description = "外观筛选（逗号分隔，如 '崭新出厂,战痕累累'")
+    private String wears;
 
     @Schema(description = "关键词搜索（饰品名称）")
     private String keyword;

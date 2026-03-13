@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 /**
  * 库存Mapper接口
@@ -31,8 +32,8 @@ public interface InventoryMapper {
      */
     List<InventoryVO> selectInventoryList(@Param("userId") Long userId,
                                           @Param("status") Integer status,
-                                          @Param("type") String type,
-                                          @Param("rarity") String rarity,
+                                          @Param("typeConditions") List<Map<String, String>> typeConditions,
+                                          @Param("wearRanges") List<Map<String, BigDecimal>> wearRanges,
                                           @Param("keyword") String keyword,
                                           @Param("offset") Integer offset,
                                           @Param("pageSize") Integer pageSize);
@@ -42,8 +43,8 @@ public interface InventoryMapper {
      */
     Long countInventory(@Param("userId") Long userId,
                         @Param("status") Integer status,
-                        @Param("type") String type,
-                        @Param("rarity") String rarity,
+                        @Param("typeConditions") List<Map<String, String>> typeConditions,
+                        @Param("wearRanges") List<Map<String, BigDecimal>> wearRanges,
                         @Param("keyword") String keyword);
 
     /**

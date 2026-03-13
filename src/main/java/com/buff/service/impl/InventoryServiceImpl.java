@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,12 +50,18 @@ public class InventoryServiceImpl implements InventoryService {
         // 计算偏移量
         int offset = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
 
+        // 将 wears 字符串转为磨损范围列表（支持 OR 条件查询）
+        List<Map<String, BigDecimal>> wearRanges = parseWearRanges(queryDTO.getWears());
+
+        // 解析 typeSelects 为类型条件列表
+        List<Map<String, String>> typeConditions = parseTypeConditions(queryDTO.getTypeSelects());
+
         // 查询总数
         Long total = inventoryMapper.countInventory(
                 userId,
                 queryDTO.getStatus(),
-                queryDTO.getType(),
-                queryDTO.getRarity(),
+                typeConditions,
+                wearRanges,
                 queryDTO.getKeyword()
         );
 
@@ -66,8 +73,8 @@ public class InventoryServiceImpl implements InventoryService {
         List<InventoryVO> list = inventoryMapper.selectInventoryList(
                 userId,
                 queryDTO.getStatus(),
-                queryDTO.getType(),
-                queryDTO.getRarity(),
+                typeConditions,
+                wearRanges,
                 queryDTO.getKeyword(),
                 offset,
                 queryDTO.getPageSize()
@@ -202,7 +209,62 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     /**
-     * 计算用户库存总价值。
+     * 将递号分隔的 typeSelects 解析为类型条件列表。
+     * 每个元素是 Map，包含 "type" 和 "keyword" 两个键：
+     *   TYPE:步枪           → {type=步枪, keyword=}
+     *   SUB:AK-47:步枪    → {type=步枪, keyword=AK-47}
+     */
+    private List<Map<String, String>> parseTypeConditions(String typeSelects) {
+        List<Map<String, String>> conditions = new ArrayList<>();
+        if (typeSelects == null || typeSelects.isBlank()) return conditions;
+        for (String sel : typeSelects.split(",")) {
+            sel = sel.trim();
+            if (sel.startsWith("TYPE:")) {
+                Map<String, String> cond = new java.util.HashMap<>();
+                cond.put("type", sel.substring(5));
+                cond.put("keyword", "");
+                conditions.add(cond);
+            } else if (sel.startsWith("SUB:")) {
+                int firstColon = sel.indexOf(':');
+                int lastColon = sel.lastIndexOf(':');
+                if (lastColon > firstColon) {
+                    Map<String, String> cond = new java.util.HashMap<>();
+                    cond.put("keyword", sel.substring(firstColon + 1, lastColon));
+                    cond.put("type", sel.substring(lastColon + 1));
+                    conditions.add(cond);
+                }
+            }
+        }
+        return conditions;
+    }
+
+    /**
+     * 将逗号分隔的外观标签转换为 [{"min": x, "max": y}] 列表（Map 键名限，以展 MyBatis OGNL 访问）
+     */
+    private List<Map<String, BigDecimal>> parseWearRanges(String wears) {
+        List<Map<String, BigDecimal>> ranges = new ArrayList<>();
+        if (wears == null || wears.isBlank()) return ranges;
+        for (String wear : wears.split(",")) {
+            BigDecimal[] bounds = switch (wear.trim()) {
+                case "崭新出厂" -> new BigDecimal[]{BigDecimal.ZERO, new BigDecimal("0.07")};
+                case "略有磨损" -> new BigDecimal[]{new BigDecimal("0.07"), new BigDecimal("0.15")};
+                case "久经沙场" -> new BigDecimal[]{new BigDecimal("0.15"), new BigDecimal("0.37")};
+                case "破损不堪" -> new BigDecimal[]{new BigDecimal("0.37"), new BigDecimal("0.44")};
+                case "战痕累累" -> new BigDecimal[]{new BigDecimal("0.44"), BigDecimal.ONE};
+                default -> null;
+            };
+            if (bounds != null) {
+                Map<String, BigDecimal> range = new java.util.HashMap<>();
+                range.put("min", bounds[0]);
+                range.put("max", bounds[1]);
+                ranges.add(range);
+            }
+        }
+        return ranges;
+    }
+    
+    /**
+     * 计算用户库存总价値。
      * 通过 SQL 层 JOIN + SUM 聚合，避免将全量库存加载到 Java 内存。
      */
     private BigDecimal calculateTotalValue(Long userId) {
