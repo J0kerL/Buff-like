@@ -65,7 +65,6 @@ public class MarketPriceServiceImpl implements MarketPriceService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void fetchAndUpdateAllPrices() {
         log.info("开始从 Steam Market 同步价格数据...");
 
@@ -79,9 +78,16 @@ public class MarketPriceServiceImpl implements MarketPriceService {
         int successCount = 0;
         for (ItemTemplate template : templates) {
             try {
-                BigDecimal price = fetchSteamPrice(template);
-                itemTemplateMapper.updateRefPrice(template.getId(), price);
-                successCount++;
+                BigDecimal price = BuffCrawlerUtil.fetchPriceByName(template.getMarketHashName());
+                if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+                    // Steam API 不可用时跳过，保留旧价格不覆盖
+                    log.warn("Steam API 无效价格，跳过本次更新: id={}, name={}",
+                            template.getId(), template.getName());
+                } else {
+                    itemTemplateMapper.updateRefPrice(template.getId(), price);
+                    successCount++;
+                    log.info("价格同步成功: {} = ¥{}", template.getName(), price);
+                }
 
                 // Steam Market API 有频率限制（约 20 次/分钟），每次请求间隔 2~5 秒
                 long delay = 2000 + (long) (Math.random() * 3000);
@@ -95,43 +101,7 @@ public class MarketPriceServiceImpl implements MarketPriceService {
                 log.error("查询价格失败，跳过: templateId={}, name={}", template.getId(), template.getName(), e);
             }
         }
-        log.info("Steam 价格同步完成：成功更新 {} 个饰品", successCount);
+        log.info("Steam 价格同步完成：成功更新 {} / {} 个饰品", successCount, templates.size());
     }
 
-    /**
-     * 从 Steam Community Market API 查询单个饰品价格。
-     * <p>
-     * 模板必须配置 marketHashName（英文名）才能调用 API；
-     * 未配置或 API 返回失败时，降级使用按稀有度生成的模拟价格。
-     */
-    private BigDecimal fetchSteamPrice(ItemTemplate template) {
-        if (template.getMarketHashName() == null || template.getMarketHashName().isBlank()) {
-            log.warn("模板未配置 market_hash_name，使用模拟价格: id={}, name={}",
-                    template.getId(), template.getName());
-            return mockPrice(template);
-        }
-
-        BigDecimal price = BuffCrawlerUtil.fetchPriceByName(template.getMarketHashName());
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            log.warn("Steam API 未返回有效价格，使用模拟价格: {}", template.getName());
-            return mockPrice(template);
-        }
-        return price;
-    }
-
-    /**
-     * 按稀有度生成模拟价格，仅在 Steam API 不可用时作为底底。
-     */
-    private BigDecimal mockPrice(ItemTemplate template) {
-        String rarity = template.getRarity();
-        if (rarity == null) {
-            return BigDecimal.valueOf(10.0);
-        }
-        return switch (rarity) {
-            case "隐秘" -> BigDecimal.valueOf(1000 + Math.random() * 9000);
-            case "保密" -> BigDecimal.valueOf(100 + Math.random() * 900);
-            case "受限" -> BigDecimal.valueOf(10 + Math.random() * 90);
-            default    -> BigDecimal.valueOf(1 + Math.random() * 9);
-        };
-    }
 }

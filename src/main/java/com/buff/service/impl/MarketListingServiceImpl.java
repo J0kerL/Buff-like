@@ -172,7 +172,6 @@ public class MarketListingServiceImpl implements MarketListingService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public PageResult<MarketListingVO> getMarketListings(MarketQueryDTO queryDTO) {
         // 参数校验
         if (queryDTO.getPageNum() == null || queryDTO.getPageNum() < 1) {

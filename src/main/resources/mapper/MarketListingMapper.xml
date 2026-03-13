@@ -69,8 +69,8 @@
             ml.create_time
         FROM market_listing ml
         LEFT JOIN sys_user u ON ml.seller_id = u.id
-        LEFT JOIN item_template it ON ml.template_id = it.id
-        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        LEFT JOIN item_template it ON ml.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id AND ui.is_deleted = 0
         WHERE ml.status = 0
         <if test="keyword != null and keyword != ''">
             AND it.name LIKE CONCAT('%', #{keyword}, '%')
@@ -112,8 +112,8 @@
     <select id="countMarketListings" resultType="long">
         SELECT COUNT(*)
         FROM market_listing ml
-        LEFT JOIN item_template it ON ml.template_id = it.id
-        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
+        LEFT JOIN item_template it ON ml.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id AND ui.is_deleted = 0
         WHERE ml.status = 0
         <if test="keyword != null and keyword != ''">
             AND it.name LIKE CONCAT('%', #{keyword}, '%')
