@@ -41,7 +41,7 @@
             ui.lock_expire_time,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.id = #{id} AND ui.is_deleted = 0
     </select>
 
@@ -57,7 +57,7 @@
             ui.lock_expire_time,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         <if test="status != null">
             AND ui.status = #{status}
@@ -93,7 +93,7 @@
     <select id="countInventory" resultType="long">
         SELECT COUNT(*)
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         <if test="status != null">
             AND ui.status = #{status}
@@ -138,7 +138,7 @@
             it.rarity,
             COUNT(*) AS count
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         GROUP BY it.rarity
     </select>
@@ -148,7 +148,7 @@
             it.type,
             COUNT(*) AS count
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
         GROUP BY it.type
     </select>
@@ -164,7 +164,7 @@
             ui.status,
             ui.get_time
         FROM user_inventory ui
-        LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
@@ -173,13 +173,13 @@
     </select>
 
     <!--
-        在数据库层用 JOIN + SUM 直接计算总价值，避免全量加载库存到 Java 内存。
-        LEFT JOIN item_market_price 保证无参考价格的物品按 0 计算。
+        在数据库层用 JOIN + SUM 直接计算总价値，避免全量加载库存到 Java 内存。
+        LEFT JOIN item_template 保证无参考价格的物品按 0 计算。
     -->
     <select id="selectTotalValueByUserId" resultType="java.math.BigDecimal">
-        SELECT COALESCE(SUM(mp.price), 0)
+        SELECT COALESCE(SUM(it.ref_price), 0)
         FROM user_inventory ui
-        LEFT JOIN item_market_price mp ON ui.template_id = mp.template_id
+        LEFT JOIN item_template it ON ui.template_id = it.id AND it.is_deleted = 0
         WHERE ui.user_id = #{userId} AND ui.is_deleted = 0
     </select>
 

@@ -23,6 +23,11 @@ public interface MarketListingService {
     void cancelListing(Long id);
 
     /**
+     * 通过库存ID下架（不需要查找 listingId，直接操作）
+     */
+    void cancelListingByInventoryId(Long inventoryId);
+
+    /**
      * 查询市场商品列表
      */
     PageResult<MarketListingVO> getMarketListings(MarketQueryDTO queryDTO);

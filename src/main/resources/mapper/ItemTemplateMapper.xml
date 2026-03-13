@@ -9,29 +9,40 @@
         <result column="rarity" property="rarity"/>
         <result column="type" property="type"/>
         <result column="market_hash_name" property="marketHashName"/>
+        <result column="ref_price" property="refPrice"/>
+        <result column="price_update_time" property="priceUpdateTime"/>
         <result column="is_deleted" property="isDeleted"/>
         <result column="create_time" property="createTime"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template WHERE id = #{id} AND is_deleted = 0
+        SELECT * FROM item_template WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <select id="selectAll" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template WHERE is_deleted = 0 ORDER BY id ASC
+        SELECT * FROM item_template WHERE is_deleted = 0 ORDER BY id ASC
     </select>
 
     <select id="selectByName" resultMap="BaseResultMap">
-        SELECT * FROM base_item_template WHERE name = #{name} AND is_deleted = 0
+        SELECT * FROM item_template WHERE name = #{name} AND is_deleted = 0
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT * FROM item_template
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND is_deleted = 0
     </select>
 
     <insert id="insert" parameterType="com.buff.model.entity.ItemTemplate" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO base_item_template (name, icon_url, rarity, type, market_hash_name, is_deleted, create_time)
+        INSERT INTO item_template (name, icon_url, rarity, type, market_hash_name, is_deleted, create_time)
         VALUES (#{name}, #{iconUrl}, #{rarity}, #{type}, #{marketHashName}, 0, #{createTime})
     </insert>
 
     <update id="update" parameterType="com.buff.model.entity.ItemTemplate">
-        UPDATE base_item_template
+        UPDATE item_template
         SET name             = #{name},
             icon_url         = #{iconUrl},
             rarity           = #{rarity},
@@ -40,9 +51,17 @@
         WHERE id = #{id} AND is_deleted = 0
     </update>
 
+    <!-- 根据模板ID更新参考价格（由爬虫定时任务调用） -->
+    <update id="updateRefPrice">
+        UPDATE item_template
+        SET ref_price         = #{refPrice},
+            price_update_time = NOW()
+        WHERE id = #{id} AND is_deleted = 0
+    </update>
+
     <!-- 软删除：标记 is_deleted=1 而非物理删除，避免历史库存和订单关联数据丢失 -->
     <update id="deleteById">
-        UPDATE base_item_template SET is_deleted = 1 WHERE id = #{id}
+        UPDATE item_template SET is_deleted = 1 WHERE id = #{id}
     </update>
 
 </mapper>

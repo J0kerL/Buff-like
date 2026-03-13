@@ -24,6 +24,7 @@
         <result column="seller_id" property="sellerId"/>
         <result column="item_name" property="itemName"/>
         <result column="icon_url" property="iconUrl"/>
+        <result column="wear_value" property="wearValue"/>
         <result column="total_amount" property="totalAmount"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
@@ -48,6 +49,7 @@
             o.seller_id,
             it.name AS item_name,
             it.icon_url,
+            ui.wear_value,
             o.total_amount,
             o.status,
             o.create_time,
@@ -56,7 +58,7 @@
             o.finish_time
         FROM trade_order o
         LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        LEFT JOIN item_template it ON ui.template_id = it.id
         WHERE o.id = #{id}
     </select>
 
@@ -68,6 +70,7 @@
             o.seller_id,
             it.name AS item_name,
             it.icon_url,
+            ui.wear_value,
             o.total_amount,
             o.status,
             o.create_time,
@@ -76,7 +79,7 @@
             o.finish_time
         FROM trade_order o
         LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        LEFT JOIN item_template it ON ui.template_id = it.id
         WHERE o.buyer_id = #{buyerId}
         <if test="status != null">
             AND o.status = #{status}
@@ -102,6 +105,7 @@
             o.seller_id,
             it.name AS item_name,
             it.icon_url,
+            ui.wear_value,
             o.total_amount,
             o.status,
             o.create_time,
@@ -110,7 +114,7 @@
             o.finish_time
         FROM trade_order o
         LEFT JOIN user_inventory ui ON o.inventory_id = ui.id
-        LEFT JOIN base_item_template it ON ui.template_id = it.id
+        LEFT JOIN item_template it ON ui.template_id = it.id
         WHERE o.seller_id = #{sellerId}
         <if test="status != null">
             AND o.status = #{status}

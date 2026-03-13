@@ -4,6 +4,7 @@ import com.buff.model.entity.ItemTemplate;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -43,4 +44,15 @@ public interface ItemTemplateMapper {
      * 删除饰品模板
      */
     int deleteById(@Param("id") Long id);
+
+    /**
+     * 根据模板ID更新参考价格
+     */
+    int updateRefPrice(@Param("id") Long id,
+                       @Param("refPrice") BigDecimal refPrice);
+
+    /**
+     * 按 ID 列表批量查询
+     */
+    List<ItemTemplate> selectByIds(@Param("ids") List<Long> ids);
 }

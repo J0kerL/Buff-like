@@ -1,7 +1,5 @@
 package com.buff.service;
 
-import com.buff.model.entity.MarketPrice;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -14,24 +12,19 @@ import java.util.Map;
 public interface MarketPriceService {
 
     /**
-     * 根据模板ID查询价格
+     * 根据模板ID查询参考价格
      */
     BigDecimal getPriceByTemplateId(Long templateId);
 
     /**
-     * 批量查询价格（返回Map: templateId -> price）
+     * 批量查询价格（返回 Map: templateId -> price）
      */
     Map<Long, BigDecimal> getPricesByTemplateIds(List<Long> templateIds);
 
     /**
-     * 更新单个饰品价格
+     * 更新单个饰品参考价格
      */
     void updatePrice(Long templateId, BigDecimal price);
-
-    /**
-     * 批量更新价格
-     */
-    void batchUpdatePrices(List<MarketPrice> prices);
 
     /**
      * 从 Steam Community Market 同步所有饰品参考价格并写入数据库

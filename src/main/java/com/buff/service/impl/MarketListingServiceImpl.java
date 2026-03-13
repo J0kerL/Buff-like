@@ -140,6 +140,39 @@ public class MarketListingServiceImpl implements MarketListingService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelListingByInventoryId(Long inventoryId) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED);
+        }
+
+        // 1. 通过库存ID直接查找当前活跃的挂单（status=0）
+        MarketListing listing = marketListingMapper.selectByInventoryId(inventoryId);
+        if (listing == null) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "该饰品未在市场上架中");
+        }
+
+        // 2. 验证所有权
+        if (!listing.getSellerId().equals(userId)) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "无权操作该挂单");
+        }
+
+        // 3. 更新挂单状态为已下架（带乐观锁）
+        int updateCount = marketListingMapper.updateStatus(listing.getId(), ListingStatus.OFF_SALE, listing.getVersion());
+        if (updateCount == 0) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "下架失败，请重试");
+        }
+
+        // 4. 恢复库存状态为在库
+        inventoryMapper.updateStatus(inventoryId, InventoryStatus.IN_STOCK);
+        redisUtils.delete(RedisKey.HOT_ITEMS_KEY);
+
+        log.info("用户通过inventoryId下架成功: userId={}, inventoryId={}, listingId={}", userId, inventoryId, listing.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public PageResult<MarketListingVO> getMarketListings(MarketQueryDTO queryDTO) {
         // 参数校验
         if (queryDTO.getPageNum() == null || queryDTO.getPageNum() < 1) {

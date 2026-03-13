@@ -44,6 +44,15 @@ public class MarketListingController {
         return Result.success();
     }
 
+    @Operation(summary = "通过库存ID下架", description = "直接通过库存ID下架，无需先查询listingId")
+    @DeleteMapping("/list/by-inventory/{inventoryId}")
+    public Result<Void> cancelListingByInventoryId(
+            @Parameter(description = "库存ID", example = "1")
+            @PathVariable Long inventoryId) {
+        marketListingService.cancelListingByInventoryId(inventoryId);
+        return Result.success();
+    }
+
     @Operation(summary = "查询市场商品", description = "分页查询市场在售商品，支持多条件筛选和排序")
     @GetMapping("/listings")
     public Result<PageResult<MarketListingVO>> getMarketListings(@Valid MarketQueryDTO queryDTO) {

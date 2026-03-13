@@ -3,6 +3,7 @@ package com.buff.model.entity;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -45,6 +46,16 @@ public class ItemTemplate implements Serializable {
      * 例: "AK-47 | Asiimov (Field-Tested)"
      */
     private String marketHashName;
+
+    /**
+     * 市场参考价格（由爬虫定时刷新）
+     */
+    private BigDecimal refPrice;
+
+    /**
+     * 价格最近更新时间
+     */
+    private LocalDateTime priceUpdateTime;
 
     /**
      * 是否已删除：0=正常，1=已删除（软删除）

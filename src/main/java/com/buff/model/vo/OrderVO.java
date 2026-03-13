@@ -36,6 +36,9 @@ public class OrderVO implements Serializable {
     @Schema(description = "图片URL")
     private String iconUrl;
 
+    @Schema(description = "磨损度")
+    private BigDecimal wearValue;
+
     @Schema(description = "成交金额")
     private BigDecimal totalAmount;
 

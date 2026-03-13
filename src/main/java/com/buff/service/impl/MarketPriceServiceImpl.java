@@ -1,9 +1,7 @@
 package com.buff.service.impl;
 
 import com.buff.mapper.ItemTemplateMapper;
-import com.buff.mapper.MarketPriceMapper;
 import com.buff.model.entity.ItemTemplate;
-import com.buff.model.entity.MarketPrice;
 import com.buff.service.MarketPriceService;
 import com.buff.util.BuffCrawlerUtil;
 import lombok.RequiredArgsConstructor;
@@ -12,14 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 市场价格服务实现类
+ * <p>
+ * 合并 item_market_price 表后，直接操作 item_template 的 ref_price 字段。
  *
  * @author Administrator
  */
@@ -28,7 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MarketPriceServiceImpl implements MarketPriceService {
 
-    private final MarketPriceMapper marketPriceMapper;
     private final ItemTemplateMapper itemTemplateMapper;
 
     @Override
@@ -36,8 +33,9 @@ public class MarketPriceServiceImpl implements MarketPriceService {
         if (templateId == null) {
             return BigDecimal.ZERO;
         }
-        MarketPrice marketPrice = marketPriceMapper.selectByTemplateId(templateId);
-        return marketPrice != null ? marketPrice.getPrice() : BigDecimal.ZERO;
+        ItemTemplate template = itemTemplateMapper.selectById(templateId);
+        return (template != null && template.getRefPrice() != null)
+                ? template.getRefPrice() : BigDecimal.ZERO;
     }
 
     @Override
@@ -45,13 +43,14 @@ public class MarketPriceServiceImpl implements MarketPriceService {
         if (templateIds == null || templateIds.isEmpty()) {
             return new HashMap<>();
         }
-        List<MarketPrice> prices = marketPriceMapper.selectByTemplateIds(templateIds);
-        return prices.stream()
-                .collect(Collectors.toMap(
-                        MarketPrice::getTemplateId,
-                        MarketPrice::getPrice,
-                        (existing, replacement) -> existing
-                ));
+        List<ItemTemplate> templates = itemTemplateMapper.selectByIds(templateIds);
+        Map<Long, BigDecimal> result = new HashMap<>();
+        for (ItemTemplate t : templates) {
+            if (t.getRefPrice() != null) {
+                result.put(t.getId(), t.getRefPrice());
+            }
+        }
+        return result;
     }
 
     @Override
@@ -61,22 +60,8 @@ public class MarketPriceServiceImpl implements MarketPriceService {
             log.warn("updatePrice 参数缺失: templateId={}, price={}", templateId, price);
             return;
         }
-        MarketPrice marketPrice = new MarketPrice();
-        marketPrice.setTemplateId(templateId);
-        marketPrice.setPrice(price);
-        marketPrice.setSource("STEAM");
-        marketPriceMapper.insertOrUpdate(marketPrice);
-        log.info("更新价格成功: templateId={}, price={}", templateId, price);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void batchUpdatePrices(List<MarketPrice> prices) {
-        if (prices == null || prices.isEmpty()) {
-            return;
-        }
-        marketPriceMapper.batchInsertOrUpdate(prices);
-        log.info("批量更新价格成功: 共 {} 条", prices.size());
+        itemTemplateMapper.updateRefPrice(templateId, price);
+        log.info("更新参考价格成功: templateId={}, price={}", templateId, price);
     }
 
     @Override
@@ -91,16 +76,12 @@ public class MarketPriceServiceImpl implements MarketPriceService {
         }
         log.info("共 {} 个饰品模板，开始逐一查询 Steam 价格", templates.size());
 
-        List<MarketPrice> priceList = new ArrayList<>();
+        int successCount = 0;
         for (ItemTemplate template : templates) {
             try {
                 BigDecimal price = fetchSteamPrice(template);
-
-                MarketPrice marketPrice = new MarketPrice();
-                marketPrice.setTemplateId(template.getId());
-                marketPrice.setPrice(price);
-                marketPrice.setSource("STEAM");
-                priceList.add(marketPrice);
+                itemTemplateMapper.updateRefPrice(template.getId(), price);
+                successCount++;
 
                 // Steam Market API 有频率限制（约 20 次/分钟），每次请求间隔 2~5 秒
                 long delay = 2000 + (long) (Math.random() * 3000);
@@ -114,11 +95,7 @@ public class MarketPriceServiceImpl implements MarketPriceService {
                 log.error("查询价格失败，跳过: templateId={}, name={}", template.getId(), template.getName(), e);
             }
         }
-
-        if (!priceList.isEmpty()) {
-            batchUpdatePrices(priceList);
-            log.info("Steam 价格同步完成：成功更新 {} 个饰品", priceList.size());
-        }
+        log.info("Steam 价格同步完成：成功更新 {} 个饰品", successCount);
     }
 
     /**
@@ -143,7 +120,7 @@ public class MarketPriceServiceImpl implements MarketPriceService {
     }
 
     /**
-     * 按稀有度生成模拟价格，仅在 Steam API 不可用时作为兜底。
+     * 按稀有度生成模拟价格，仅在 Steam API 不可用时作为底底。
      */
     private BigDecimal mockPrice(ItemTemplate template) {
         String rarity = template.getRarity();

@@ -48,7 +48,7 @@
             ml.create_time
         FROM market_listing ml
         LEFT JOIN sys_user u ON ml.seller_id = u.id
-        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN item_template it ON ml.template_id = it.id
         LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
         WHERE ml.id = #{id}
     </select>
@@ -69,7 +69,7 @@
             ml.create_time
         FROM market_listing ml
         LEFT JOIN sys_user u ON ml.seller_id = u.id
-        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN item_template it ON ml.template_id = it.id
         LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
         WHERE ml.status = 0
         <if test="keyword != null and keyword != ''">
@@ -112,7 +112,7 @@
     <select id="countMarketListings" resultType="long">
         SELECT COUNT(*)
         FROM market_listing ml
-        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN item_template it ON ml.template_id = it.id
         LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
         WHERE ml.status = 0
         <if test="keyword != null and keyword != ''">
@@ -151,7 +151,7 @@
             ml.create_time
         FROM market_listing ml
         LEFT JOIN sys_user u ON ml.seller_id = u.id
-        LEFT JOIN base_item_template it ON ml.template_id = it.id
+        LEFT JOIN item_template it ON ml.template_id = it.id
         LEFT JOIN user_inventory ui ON ml.inventory_id = ui.id
         WHERE ml.seller_id = #{sellerId}
         <if test="status != null">
