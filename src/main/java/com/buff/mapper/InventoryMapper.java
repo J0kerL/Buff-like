@@ -77,6 +77,18 @@ public interface InventoryMapper {
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 
     /**
+     * 设置交易锁定状态，同时记录解锁时间
+     */
+    int updateLockStatus(@Param("id") Long id,
+                         @Param("status") Integer status,
+                         @Param("lockExpireTime") java.time.LocalDateTime lockExpireTime);
+
+    /**
+     * 批量解锁已过期的交易锁定饰品，返回解锁数量
+     */
+    int unlockExpiredItems();
+
+    /**
      * 更新库存信息
      */
     int updateById(UserInventory inventory);

@@ -47,6 +47,11 @@ public class UserInventory implements Serializable {
     private Integer status;
 
     /**
+     * 交易锁定解除时间（status=2时有效）
+     */
+    private LocalDateTime lockExpireTime;
+
+    /**
      * 获得时间
      */
     private LocalDateTime getTime;

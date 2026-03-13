@@ -39,6 +39,9 @@ public class InventoryVO implements Serializable {
     @Schema(description = "状态: 0=在库, 1=出售中, 2=交易锁定")
     private Integer status;
 
+    @Schema(description = "交易锁定解除时间")
+    private LocalDateTime lockExpireTime;
+
     @Schema(description = "获得时间")
     private LocalDateTime getTime;
 }

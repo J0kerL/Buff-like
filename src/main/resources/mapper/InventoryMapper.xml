@@ -21,6 +21,7 @@
         <result column="wear_value" property="wearValue"/>
         <result column="pattern_index" property="patternIndex"/>
         <result column="status" property="status"/>
+        <result column="lock_expire_time" property="lockExpireTime"/>
         <result column="get_time" property="getTime"/>
     </resultMap>
 
@@ -37,6 +38,7 @@
             ui.wear_value,
             ui.pattern_index,
             ui.status,
+            ui.lock_expire_time,
             ui.get_time
         FROM user_inventory ui
         LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
@@ -52,6 +54,7 @@
             ui.wear_value,
             ui.pattern_index,
             ui.status,
+            ui.lock_expire_time,
             ui.get_time
         FROM user_inventory ui
         LEFT JOIN base_item_template it ON ui.template_id = it.id AND it.is_deleted = 0
@@ -161,13 +164,31 @@
         WHERE id = #{id} AND is_deleted = 0
     </update>
 
+    <update id="updateLockStatus">
+        UPDATE user_inventory
+        SET status = #{status},
+            lock_expire_time = #{lockExpireTime}
+        WHERE id = #{id} AND is_deleted = 0
+    </update>
+
+    <update id="unlockExpiredItems">
+        UPDATE user_inventory
+        SET status = 0,
+            lock_expire_time = NULL
+        WHERE status = 2
+          AND lock_expire_time IS NOT NULL
+          AND lock_expire_time &lt;= NOW()
+          AND is_deleted = 0
+    </update>
+
     <update id="updateById" parameterType="com.buff.model.entity.UserInventory">
         UPDATE user_inventory
         SET user_id = #{userId},
             template_id = #{templateId},
             wear_value = #{wearValue},
             pattern_index = #{patternIndex},
-            status = #{status}
+            status = #{status},
+            lock_expire_time = #{lockExpireTime}
         WHERE id = #{id} AND is_deleted = 0
     </update>
 

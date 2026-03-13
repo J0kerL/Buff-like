@@ -58,6 +58,16 @@ public class MarketListingServiceImpl implements MarketListingService {
         }
 
         // 3. 验证库存状态（必须是在库状态）
+        if (inventory.getStatus() == InventoryStatus.ON_SALE) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "该饰品已在出售中，请勿重复操作");
+        }
+        if (inventory.getStatus() == InventoryStatus.LOCKED) {
+            String expireStr = inventory.getLockExpireTime() != null
+                    ? inventory.getLockExpireTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                    : "未知";
+            throw new BusinessException(ResultCode.ERROR.getCode(),
+                    "该饰品交易锁定中，解锁时间：" + expireStr);
+        }
         if (inventory.getStatus() != InventoryStatus.IN_STOCK) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "该饰品不在库中，无法上架");
         }

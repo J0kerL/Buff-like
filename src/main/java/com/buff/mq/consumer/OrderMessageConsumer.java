@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 订单消息消费者
@@ -61,7 +62,8 @@ public class OrderMessageConsumer {
                 return;
             }
             if (message.getBuyerId().equals(inventory.getUserId())
-                    && inventory.getStatus() == InventoryStatus.IN_STOCK) {
+                    && (inventory.getStatus() == InventoryStatus.IN_STOCK
+                        || inventory.getStatus() == InventoryStatus.LOCKED)) {
                 log.warn("库存已归属买家，消息重复消费，跳过: inventoryId={}", message.getInventoryId());
                 channel.basicAck(deliveryTag, false);
                 return;
@@ -70,9 +72,10 @@ public class OrderMessageConsumer {
             // 1. 卖家余额打款（乐观锁重试最多 3 次）
             creditSellerBalance(message.getSellerId(), message.getAmount(), message.getOrderNo());
 
-            // 2. 库存所有权转移给买家
+            // 2. 库存所有权转移给买家，并设置 7 天交易锁定
             inventory.setUserId(message.getBuyerId());
-            inventory.setStatus(InventoryStatus.IN_STOCK);
+            inventory.setStatus(InventoryStatus.LOCKED);
+            inventory.setLockExpireTime(LocalDateTime.now().plusDays(7));
             inventoryMapper.updateById(inventory);
 
             // 3. 挂单标记为已售出
