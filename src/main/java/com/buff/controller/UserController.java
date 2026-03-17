@@ -1,6 +1,7 @@
 package com.buff.controller;
 
 import com.buff.common.Result;
+import com.buff.service.FileService;
 import com.buff.service.UserService;
 import com.buff.model.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户控制器
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final FileService fileService;
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息")
     @GetMapping("/current")
@@ -39,5 +42,17 @@ public class UserController {
             @RequestParam String steamId) {
         userService.bindSteam(steamId);
         return Result.success();
+    }
+
+    @Operation(summary = "上传头像", description = "上传用户头像图片到OSS并更新用户头像")
+    @PostMapping("/avatar")
+    public Result<UserVO> uploadAvatar(
+            @Parameter(description = "头像图片文件")
+            @RequestParam("file") MultipartFile file) {
+        // 上传文件到OSS
+        String avatarUrl = fileService.upload(file);
+        // 更新用户头像
+        UserVO userVO = userService.updateAvatar(avatarUrl);
+        return Result.success(userVO);
     }
 }

@@ -30,4 +30,12 @@ public interface UserService {
      * @param steamId Steam ID
      */
     void bindSteam(String steamId);
+
+    /**
+     * 更新用户头像
+     *
+     * @param avatarUrl 头像URL
+     * @return 更新后的用户信息
+     */
+    UserVO updateAvatar(String avatarUrl);
 }

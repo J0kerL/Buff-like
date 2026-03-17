@@ -73,4 +73,30 @@ public class UserServiceImpl implements UserService {
         }
 
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserVO updateAvatar(String avatarUrl) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED);
+        }
+
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND);
+        }
+
+        // 更新头像
+        user.setAvatar(avatarUrl);
+        int result = userMapper.updateById(user);
+
+        if (result > 0) {
+            log.info("用户更新头像成功: userId={}, avatarUrl={}", userId, avatarUrl);
+        }
+
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user, userVO);
+        return userVO;
+    }
 }
