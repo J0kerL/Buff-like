@@ -37,6 +37,11 @@ public interface TradeOrderService {
     void cancelOrder(Long id);
 
     /**
+     * 卖家拒绝发货（退款给买家）
+     */
+    void rejectOrder(Long id);
+
+    /**
      * 查看订单详情
      */
     OrderVO getOrderDetail(Long id);

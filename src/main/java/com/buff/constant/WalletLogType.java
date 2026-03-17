@@ -26,4 +26,9 @@ public interface WalletLogType {
      * 出售收入
      */
     int SALE_INCOME = 4;
+
+    /**
+     * 退款收入
+     */
+    int REFUND = 5;
 }

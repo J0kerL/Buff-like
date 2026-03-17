@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.buff.mapper.NotificationMapper">
+
+    <resultMap id="NotificationVOMap" type="com.buff.model.vo.NotificationVO">
+        <id column="id" property="id"/>
+        <result column="type" property="type"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="order_id" property="orderId"/>
+        <result column="is_read" property="isRead"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.buff.model.entity.Notification" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_notification (user_id, type, title, content, order_id, is_read, create_time)
+        VALUES (#{userId}, #{type}, #{title}, #{content}, #{orderId}, 0, NOW())
+    </insert>
+
+    <select id="selectById" resultType="com.buff.model.entity.Notification">
+        SELECT id, user_id, type, title, content, order_id, is_read, create_time
+        FROM sys_notification
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserId" resultMap="NotificationVOMap">
+        SELECT id, type, title, content, order_id, is_read, create_time
+        FROM sys_notification
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_notification
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="countUnreadByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_notification
+        WHERE user_id = #{userId} AND is_read = 0
+    </select>
+
+    <update id="updateRead">
+        UPDATE sys_notification
+        SET is_read = 1
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM sys_notification
+        WHERE id = #{id}
+    </delete>
+
+    <update id="updateReadByOrderId">
+        UPDATE sys_notification
+        SET is_read = 1
+        WHERE user_id = #{userId} AND order_id = #{orderId} AND is_read = 0
+    </update>
+
+</mapper>

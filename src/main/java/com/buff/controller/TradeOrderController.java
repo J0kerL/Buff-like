@@ -52,6 +52,15 @@ public class TradeOrderController {
         return Result.success();
     }
 
+    @Operation(summary = "卖家拒绝发货", description = "卖家拒绝发货，退款给买家并恢复挂单")
+    @PostMapping("/{id}/reject")
+    public Result<Void> rejectOrder(
+            @Parameter(description = "订单ID", example = "1")
+            @PathVariable Long id) {
+        tradeOrderService.rejectOrder(id);
+        return Result.success();
+    }
+
     @Operation(summary = "买家确认收货", description = "买家确认收货，完成交易")
     @PostMapping("/{id}/confirm")
     public Result<Void> confirmOrder(

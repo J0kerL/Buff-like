@@ -3,6 +3,7 @@ package com.buff.service.impl;
 import com.buff.common.PageResult;
 import com.buff.common.ResultCode;
 import com.buff.constant.ListingStatus;
+import com.buff.constant.NotificationType;
 import com.buff.constant.OrderStatus;
 import com.buff.constant.WalletLogType;
 import com.buff.exception.BusinessException;
@@ -17,6 +18,7 @@ import com.buff.model.entity.User;
 import com.buff.model.vo.OrderVO;
 import com.buff.mq.config.RabbitMQConfig;
 import com.buff.mq.message.OrderConfirmedMessage;
+import com.buff.service.NotificationService;
 import com.buff.service.TradeOrderService;
 import com.buff.service.WalletService;
 import com.buff.util.UserContext;
@@ -47,6 +49,7 @@ public class TradeOrderServiceImpl implements TradeOrderService {
     private final UserMapper userMapper;
     private final WalletService walletService;
     private final RabbitTemplate rabbitTemplate;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -149,6 +152,17 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         tradeOrderMapper.updateStatus(id, OrderStatus.PAID_WAIT_DELIVERY);
         tradeOrderMapper.updatePayTime(id);
 
+        // 8. 通知卖家：买家已付款
+        OrderVO orderVO = tradeOrderMapper.selectOrderDetailById(id);
+        String itemName = orderVO != null ? orderVO.getItemName() : "商品";
+        notificationService.createNotification(
+                order.getSellerId(),
+                NotificationType.BUYER_PAID,
+                "商品已售出",
+                "您的商品【" + itemName + "】已被购买，请尽快处理",
+                id
+        );
+
         log.info("订单支付成功: orderId={}, buyerId={}, amount={}", id, buyerId, order.getTotalAmount());
     }
 
@@ -179,6 +193,17 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         // 4. 更新订单状态为已发货
         tradeOrderMapper.updateStatus(id, OrderStatus.DELIVERED);
         tradeOrderMapper.updateDeliverTime(id);
+
+        // 5. 通知买家：卖家已发货
+        OrderVO orderVO = tradeOrderMapper.selectOrderDetailById(id);
+        String itemName = orderVO != null ? orderVO.getItemName() : "商品";
+        notificationService.createNotification(
+                order.getBuyerId(),
+                NotificationType.SELLER_DELIVERED,
+                "商品已发货",
+                "您购买的【" + itemName + "】已发货，请注意查收",
+                id
+        );
 
         log.info("订单发货成功: orderId={}, sellerId={}", id, sellerId);
     }
@@ -227,6 +252,15 @@ public class TradeOrderServiceImpl implements TradeOrderService {
                 message
         );
 
+        // 6. 通知卖家：交易成功
+        notificationService.createNotification(
+                order.getSellerId(),
+                NotificationType.TRADE_SUCCESS,
+                "交易成功",
+                "订单【" + order.getOrderNo() + "】交易成功，已到账 " + order.getTotalAmount() + " 元",
+                id
+        );
+
         log.info("订单确认收货成功，后处理消息已发送: orderId={}, buyerId={}, sellerId={}",
                 id, buyerId, order.getSellerId());
     }
@@ -266,7 +300,78 @@ public class TradeOrderServiceImpl implements TradeOrderService {
             throw new BusinessException(ResultCode.ERROR.getCode(), "恢复挂单状态失败，请重试");
         }
 
+        // 6. 通知对方：订单已取消
+        Long notifyUserId = userId.equals(order.getBuyerId()) ? order.getSellerId() : order.getBuyerId();
+        notificationService.createNotification(
+                notifyUserId,
+                NotificationType.ORDER_CANCELLED,
+                "订单已取消",
+                "订单【" + order.getOrderNo() + "】已取消",
+                id
+        );
+
         log.info("订单取消成功: orderId={}, userId={}", id, userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectOrder(Long id) {
+        Long sellerId = UserContext.getUserId();
+        if (sellerId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED);
+        }
+
+        // 1. 查询订单
+        TradeOrder order = tradeOrderMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "订单不存在");
+        }
+
+        // 2. 验证是否为卖家
+        if (!order.getSellerId().equals(sellerId)) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "无权操作该订单");
+        }
+
+        // 3. 验证订单状态（必须是待发货，即买家已付款）
+        if (order.getStatus() != OrderStatus.PAID_WAIT_DELIVERY) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "订单状态异常，无法拒绝发货");
+        }
+
+        // 4. 退款给买家（使用乐观锁）
+        User buyer = userMapper.selectById(order.getBuyerId());
+        java.math.BigDecimal refundedBalance = buyer.getBalance().add(order.getTotalAmount());
+        int updateCount = userMapper.updateBalance(order.getBuyerId(), refundedBalance, buyer.getVersion());
+        if (updateCount == 0) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "退款失败，请重试");
+        }
+
+        // 5. 记录退款流水
+        walletService.recordWalletLog(order.getBuyerId(), WalletLogType.REFUND,
+                order.getTotalAmount(), refundedBalance, order.getOrderNo(), "卖家拒绝发货退款");
+
+        // 6. 更新订单状态为已取消
+        tradeOrderMapper.updateStatus(id, OrderStatus.CANCELLED);
+
+        // 7. 恢复挂单状态为上架中
+        MarketListing listing = marketListingMapper.selectById(order.getListingId());
+        int listingUpdateCount = marketListingMapper.updateStatus(
+                order.getListingId(), ListingStatus.ON_SALE, listing.getVersion());
+        if (listingUpdateCount == 0) {
+            throw new BusinessException(ResultCode.ERROR.getCode(), "恢复挂单状态失败，请重试");
+        }
+
+        // 8. 通知买家：卖家拒绝发货，已退款
+        OrderVO orderVO = tradeOrderMapper.selectOrderDetailById(id);
+        String itemName = orderVO != null ? orderVO.getItemName() : "商品";
+        notificationService.createNotification(
+                order.getBuyerId(),
+                NotificationType.SELLER_REJECTED,
+                "卖家拒绝发货",
+                "您购买的【" + itemName + "】卖家拒绝发货，已为您退款 " + order.getTotalAmount() + " 元",
+                id
+        );
+
+        log.info("卖家拒绝发货: orderId={}, sellerId={}, refund={}", id, sellerId, order.getTotalAmount());
     }
 
     @Override
@@ -289,6 +394,9 @@ public class TradeOrderServiceImpl implements TradeOrderService {
         if (!orderVO.getBuyerId().equals(userId) && !orderVO.getSellerId().equals(userId)) {
             throw new BusinessException(ResultCode.ERROR.getCode(), "无权查看该订单");
         }
+
+        // 标记该订单相关的通知为已读
+        notificationService.markAsReadByOrderId(id);
 
         return orderVO;
     }
