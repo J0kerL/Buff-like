@@ -6,13 +6,13 @@ spring:
     # 数据库用户名（通过环境变量 DB_USERNAME 注入）
     username: ${DB_USERNAME:root}
     # 数据库密码（通过环境变量 DB_PASSWORD 注入）
-    password: ${DB_PASSWORD:1234}
+    password: ${DB_PASSWORD:Diamond1234.}
 
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:1234}
+      password: ${REDIS_PASSWORD:123456}
       database: ${REDIS_DATABASE:0}
       timeout: 5000ms
       lettuce:
@@ -25,6 +25,27 @@ spring:
           max-idle: 10
           # 连接池最小空闲连接数（保持一定连接预热）
           min-idle: 5
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    # 消息确认模式：publisher-confirm + publisher-returns 保证消息可靠投递
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        # 消费者手动 ACK，处理失败可重试
+        acknowledge-mode: manual
+        # 每次预取1条消息，避免消息堆积在消费者内存
+        prefetch: 1
+        retry:
+          enabled: true
+          initial-interval: 2000ms
+          max-attempts: 3
+          multiplier: 2
 
 # JWT 配置
 jwt:
@@ -46,15 +67,15 @@ jwt:
 # - OSS_BUCKET_NAME: OSS 存储桶名称
 oss:
   endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
-  access-key-id: ${OSS_ACCESS_KEY_ID:}
-  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
-  bucket-name: ${OSS_BUCKET_NAME:}
+  access-key-id: ${OSS_ACCESS_KEY_ID:YOUR_ACCESS_KEY_ID}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:YOUR_ACCESS_KEY_SECRET}
+  bucket-name: ${OSS_BUCKET_NAME:buff-like}
 
 # 日志配置
 logging:
   file:
     # 日志文件存储路径（生产环境通常在 /data 目录）
-    path: ${LOG_PATH:/data/logs/buff}
+    path: ${LOG_PATH:/home/diamond/buff/logs/buff.log}
   level:
     # 根日志级别
     root: info
