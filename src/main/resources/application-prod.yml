@@ -75,7 +75,7 @@ oss:
 logging:
   file:
     # 日志文件存储路径（生产环境通常在 /data 目录）
-    path: ${LOG_PATH:/home/diamond/buff/logs/buff.log}
+    path: ${LOG_PATH:/home/diamond/buff/logs}
   level:
     # 根日志级别
     root: info
